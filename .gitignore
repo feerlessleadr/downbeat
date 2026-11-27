@@ -1,0 +1,24 @@
+# Secrets
+*.jks
+*.keystore
+keystore.properties
+local.properties
+
+# Build outputs
+build/
+.gradle/
+.kotlin/
+**/build/
+*.apk
+*.aab
+captures/
+.cxx/
+
+# Local API samples (contain device identifiers)
+downbeat-samples/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
