@@ -78,6 +78,7 @@
 - Install the new debug build over the old one and test.
 - In the Music Assistant web UI, delete the old token named exactly `Downbeat` (created before token names became unique) and the token `downbeat-probe-2` if you made it. Tokens named `Downbeat xxxxxx` are removed by sign-out.
 
-## M6 provider setup: slice 1 built (154 tests pass, not yet tried on a phone, uncommitted)
+## M6 provider setup: slice 1 pushed as `87792f6` and confirmed on the phone; slice 2 (actions) built, 160 tests pass, not yet tried on a phone, uncommitted
 - Research written up in `docs/provider-setup-research.md` (from the server's public API description). Settings now shows "Music sources and players" for administrator accounts: a read-only list of every provider with its status and any error. Slices 2 to 4 (actions, edit forms, adding through the setup flow) come after the owner checks slice 1.
 - To verify on the phone: that the row appears for the owner's account, that the list matches the web UI (names, kinds, statuses), and what a Problem looks like.
+- Slice 2: tap a provider for Reload, Turn off or on, Sync library, Remove (with confirmation); refresh shows a progress bar and the update time. To verify on the phone with harmless targets only: Reload and Sync library on your music source; optionally Turn off then on for fanart.tv. Do not remove anything (just check the confirmation, then cancel).

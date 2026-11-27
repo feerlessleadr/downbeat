@@ -12,6 +12,16 @@ data class ProviderRow(
     val status: ProviderStatus,
     /** The server's error text when the provider is not working, else null. */
     val error: String?,
+    val domain: String = "",
+    /** music, player, metadata, plugin. */
+    val type: String = "",
+    val enabled: Boolean = true,
+    /** The manifest allows turning it off. False when unknown, so nothing risky is offered by guesswork. */
+    val canTurnOff: Boolean = false,
+    /** It is not built into the server (a built-in provider cannot be removed). False when unknown. */
+    val canRemove: Boolean = false,
+    /** A music source that is on, so its library can be synced. */
+    val canSync: Boolean = false,
 )
 
 enum class ProviderStatus(val label: String) {
@@ -61,6 +71,12 @@ fun providerGroups(configs: List<ProviderConfig>, manifests: List<ProviderManife
                 detail = manifest?.description?.takeIf { it.isNotBlank() } ?: title.removeSuffix("s"),
                 status = status,
                 error = c.lastError?.message?.takeIf { it.isNotBlank() && status == ProviderStatus.Problem },
+                domain = c.domain,
+                type = c.type,
+                enabled = c.enabled && c.status != "disabled",
+                canTurnOff = manifest?.allowDisable == true,
+                canRemove = manifest != null && !manifest.builtin,
+                canSync = c.type == "music" && c.enabled && c.status != "disabled",
             )
         }.sortedBy { it.name.lowercase() }
         if (rows.isEmpty()) null else ProviderGroup(title, rows)

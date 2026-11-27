@@ -186,6 +186,29 @@ class MaApi(private val client: MaClient) {
     suspend fun providerConfigs(): List<ProviderConfig> =
         list(ProviderConfig.serializer(), "config/providers", args { put("include_values", false) })
 
+    /** Restarts one provider instance. */
+    suspend fun reloadProvider(instanceId: String) = run("config/providers/reload", args { put("instance_id", instanceId) })
+
+    /** Removes a provider instance (and with it what it contributed to the library). Cannot be undone. */
+    suspend fun removeProvider(instanceId: String) = run("config/providers/remove", args { put("instance_id", instanceId) })
+
+    /**
+     * Turns an existing instance on or off through `config/providers/save` with `enabled` among the values. Whether the
+     * server honours this key is not yet verified (docs/provider-setup-research.md), so callers read the list back.
+     */
+    suspend fun setProviderEnabled(domain: String, instanceId: String, enabled: Boolean) = run(
+        "config/providers/save",
+        args {
+            put("provider_domain", domain)
+            put("instance_id", instanceId)
+            put("values", buildJsonObject { put("enabled", enabled) })
+        },
+    )
+
+    /** Starts a library sync for one music provider instance. */
+    suspend fun syncProvider(instanceId: String) =
+        run("music/sync", args { put("providers", JsonArray(listOf(JsonPrimitive(instanceId)))) })
+
     /** Every kind of provider the server could add. */
     suspend fun providerManifests(): List<ProviderManifest> = list(ProviderManifest.serializer(), "providers/manifests")
 
