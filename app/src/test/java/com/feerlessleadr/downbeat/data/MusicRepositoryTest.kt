@@ -145,6 +145,31 @@ class MusicRepositoryTest {
         assertNotNull(r.api)
     }
 
+    @Test fun comingToTheForegroundSkipsTheReconnectWait() = runBlocking {
+        fake.tokens.add("good")
+        // A one-minute wait would fail the test's 10 second limit without the nudge.
+        val r = MusicRepository(http, MemoryStore(Session(fake.url(), "good")), scope, requireHttps = false, backoffMs = listOf(60_000))
+            .also { repos.add(it) }
+        r.start()
+        r.await { it.phase == Phase.Online }
+        fake.dropConnections()
+        r.await { it.phase == Phase.Reconnecting }
+        r.onForeground()
+        r.await { it.phase == Phase.Online }
+        assertEquals(2, fake.connections.get())
+    }
+
+    @Test fun comingToTheForegroundWhileOnlineRefreshesRooms() = runBlocking {
+        fake.tokens.add("good")
+        val r = repo(MemoryStore(Session(fake.url(), "good")))
+        r.start()
+        r.await { it.phase == Phase.Online && it.players.size == 2 }
+        fake.results["players/all"] = """[{"player_id":"p1","name":"Kitchen","type":"player","playback_state":"idle"}]"""
+        r.onForeground()
+        r.await { it.players.size == 1 }
+        assertEquals(1, fake.connections.get())
+    }
+
     @Test fun playbackChangeRereadsTheQueue() = runBlocking {
         fake.tokens.add("good")
         fake.results["player_queues/get"] =

@@ -21,6 +21,8 @@ class FakeMaServer {
     private val server = MockWebServer()
     val tokens = CopyOnWriteArraySet<String>()
     val results = ConcurrentHashMap<String, String>()
+    /** Commands that answer with an error (the text goes into `details`). */
+    val errors = ConcurrentHashMap<String, String>()
     val received = CopyOnWriteArrayList<Pair<String, JsonObject?>>()
     private val sockets = CopyOnWriteArrayList<WebSocket>()
     val connections = AtomicInteger()
@@ -58,7 +60,12 @@ class FakeMaServer {
                 }
                 else -> {
                     received.add(command to (msg["args"] as? JsonObject))
-                    webSocket.send("""{"message_id":"$id","result":${results[command] ?: "null"},"partial":false}""")
+                    val error = errors[command]
+                    if (error != null) {
+                        webSocket.send("""{"message_id":"$id","error_code":7,"details":"$error"}""")
+                    } else {
+                        webSocket.send("""{"message_id":"$id","result":${results[command] ?: "null"},"partial":false}""")
+                    }
                 }
             }
         }

@@ -1,76 +1,91 @@
 package com.feerlessleadr.downbeat.ui
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.feerlessleadr.downbeat.R
 import com.feerlessleadr.downbeat.data.MusicRepository
 import com.feerlessleadr.downbeat.data.Phase
-import com.feerlessleadr.downbeat.data.statusLabel
-import com.feerlessleadr.downbeat.data.visibleRooms
+import com.feerlessleadr.downbeat.data.PlaybackController
+import kotlinx.coroutines.launch
 
 @Composable
-fun AppRoot(repo: MusicRepository) {
+fun AppRoot(repo: MusicRepository, controller: PlaybackController) {
     val state by repo.state.collectAsStateWithLifecycle()
     when (state.phase) {
         Phase.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         Phase.SignedOut -> SignInScreen(repo, state.message)
-        Phase.Connecting, Phase.Online, Phase.Reconnecting -> RoomsPlaceholder(repo)
+        Phase.Connecting, Phase.Online, Phase.Reconnecting -> MainScaffold(repo, controller)
     }
 }
 
-/**
- * Temporary screen that proves the connection works: connection status and the list of rooms with live state.
- * Replaced by the real Playing / Library / Search tabs (docs/design.md).
- */
+private val TABS = listOf(
+    Triple("Playing", R.drawable.ic_nav_playing, 0),
+    Triple("Library", R.drawable.ic_nav_library, 1),
+    Triple("Search", R.drawable.ic_nav_search, 2),
+)
+
 @Composable
-private fun RoomsPlaceholder(repo: MusicRepository) {
-    val state by repo.state.collectAsStateWithLifecycle()
-    val rooms = visibleRooms(state.players)
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Rooms", style = MaterialTheme.typography.headlineMedium)
-            TextButton(onClick = { repo.signOut() }) { Text("Sign out") }
-        }
-        Text(
-            when (state.phase) {
-                Phase.Online -> "Connected"
-                Phase.Reconnecting -> "Connection lost. Reconnecting…"
-                else -> "Connecting…"
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        LazyColumn(Modifier.padding(top = 12.dp)) {
-            items(rooms, key = { it.playerId }) { room ->
-                Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-                    Text(room.name, style = MaterialTheme.typography.titleMedium)
-                    val volume = room.volumeLevel?.let { " · volume $it" }.orEmpty()
-                    Text(
-                        statusLabel(room) + volume,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) {
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val onError: (String) -> Unit = { message -> scope.launch { snackbar.showSnackbar(message) } }
+
+    Scaffold(
+        modifier = Modifier.safeDrawingPadding(),
+        snackbarHost = { SnackbarHost(snackbar) },
+        bottomBar = {
+            NavigationBar {
+                TABS.forEach { (label, icon, index) ->
+                    NavigationBarItem(
+                        selected = tab == index,
+                        onClick = { tab = index },
+                        icon = { Icon(painterResource(icon), contentDescription = null) },
+                        label = { Text(label) },
                     )
                 }
-                HorizontalDivider()
             }
+        },
+    ) { padding ->
+        Column(Modifier.padding(padding).fillMaxSize()) {
+            when (tab) {
+                0 -> PlayingScreen(repo, controller, onError = onError, onSignOut = { repo.signOut() })
+                1 -> ComingSoon("Library", "Browse albums, artists, playlists and radio. Coming next.")
+                else -> ComingSoon("Search", "Search your whole library. Coming next.")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ComingSoon(title: String, body: String) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, style = MaterialTheme.typography.titleLarge)
+            Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

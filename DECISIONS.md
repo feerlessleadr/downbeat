@@ -68,3 +68,17 @@
 - **Decision**: Enabled on GitHub: secret scanning and push protection (already on), vulnerability alerts, Dependabot security updates, private vulnerability reporting, delete branch on merge, and branch protection on main (no force push, no deletion, admins not enforced). Added `SECURITY.md`, `.github/dependabot.yml` (Gradle and Actions, weekly), and more secret patterns in `.gitignore`. Audit found no secrets, hosts or IPs in files or history; the commit email is the approved public identity.
 - **Rationale**: Cheap protections against leaked secrets, vulnerable dependencies and accidental history loss, without slowing a solo workflow.
 - **Impact**: Add a required CI status check to main protection once the pull request workflow exists. Manifest already has `allowBackup=false` and cleartext off.
+
+### 2026-11-27, Fixes from the first phone test of the Playing screen
+- **Context**: Owner's test showed: a TV chosen as the default room, no next/previous buttons, seek bar not draggable, shuffle icon never changing, and 10 to 15 s to reconnect after the screen was off.
+- **Options considered**: Keep gating next/previous/seek on `supported_features` (rejected: the player lists none of them yet the web UI offers them, because they are queue commands the server runs). Wait for the 30 s websocket ping to notice a dead socket (rejected: too slow).
+- **Decision**: Always show next, previous and seek. Default room prefers a playing room, then a single room that can pause (a real speaker), then any single room. Re-read the queue right after shuffle and repeat. Add `MusicRepository.onForeground()`: on activity start and when a network becomes available it skips the reconnect wait, or when online checks the connection with a 3 s request and reconnects at once if it fails.
+- **Rationale**: Queue state events were not seen, so the app cannot rely on them; a socket that slept with the screen off can look alive.
+- **Impact**: `NowPlaying.kt`, `RoomLogic.kt`, `PlaybackController.kt`, `MusicRepository.kt`, `MainActivity.kt`, `DownbeatApp.kt` (network callback). Tests added for the foreground nudge and the default room.
+
+### 2026-11-27, Seek position comes from the queue
+- **Context**: After a seek on the phone, the bar snapped to the start and stayed out of sync with the web UI until the next song. The web UI reads the queue's `elapsed_time`; the app preferred the player's own clock, which can restart after the device re-opens its stream. Cause not confirmed against real data.
+- **Options considered**: Keep the player clock and only hold the dragged value (hides it, does not fix drift); read the queue only.
+- **Decision**: Position uses the queue's `elapsed_time` and `elapsed_time_last_updated` when present, else the player's. After a seek the queue is re-read at 1 s and 3 s. The repository re-reads the queue of every playing room every 10 s (`queuePollMs`). The screen keeps the dropped position for 5 s after a release.
+- **Rationale**: Matches the web UI and cannot drift for long even without queue events.
+- **Impact**: `NowPlaying.kt`, `PlaybackController.kt`, `MusicRepository.kt`, `PlayingScreen.kt`. If the bar is still wrong after this, capture the player and queue elapsed fields after a seek.

@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -69,9 +70,36 @@ class MusicRepository(
     private val requireHttps: Boolean = true,
     private val backoffMs: List<Long> = listOf(1_000, 2_000, 4_000, 8_000, 15_000, 30_000),
     private val tokenName: String = "Downbeat",
+    private val prefs: AppPrefs = MemoryAppPrefs(),
+    private val queuePollMs: Long = 10_000,
 ) {
     private val _state = MutableStateFlow(RepoState())
     val state: StateFlow<RepoState> = _state.asStateFlow()
+
+    private val _selectedRoomId = MutableStateFlow(prefs.lastRoomId)
+
+    /** The room the person chose (may be a follower or an unavailable room; see RoomLogic.effectiveLeader). */
+    val selectedRoomId: StateFlow<String?> = _selectedRoomId.asStateFlow()
+
+    @Volatile private var currentSession: Session? = null
+
+    /**
+     * The Authorization header value for requests to the server's own address (artwork), or null for any other host.
+     * The token is only ever sent to the server the person signed in to.
+     */
+    fun bearerFor(url: okhttp3.HttpUrl): String? {
+        val s = currentSession ?: return null
+        val host = s.serverUrl.toHttpUrlOrNull()?.host ?: return null
+        return if (url.host == host) "Bearer ${s.token}" else null
+    }
+
+    /** The address the person typed, for building artwork URLs. */
+    val serverUrl: String? get() = currentSession?.serverUrl
+
+    fun selectRoom(id: String) {
+        _selectedRoomId.value = id
+        prefs.lastRoomId = id
+    }
 
     @Volatile private var currentApi: MaApi? = null
 
@@ -79,6 +107,10 @@ class MusicRepository(
     val api: MaApi? get() = currentApi
 
     private var loop: Job? = null
+
+    /** Wakes the reconnect wait early (see [onForeground]). */
+    private val nudges = Channel<Unit>(Channel.CONFLATED)
+    @Volatile private var currentClient: MaClient? = null
 
     fun start() {
         val session = store.load()
@@ -112,6 +144,7 @@ class MusicRepository(
     fun signOut(message: String? = null) {
         loop?.cancel()
         currentApi = null
+        currentSession = null
         store.clear()
         _state.value = RepoState(phase = Phase.SignedOut, message = message)
     }
@@ -133,6 +166,7 @@ class MusicRepository(
 
     private fun connect(session: Session) {
         loop?.cancel()
+        currentSession = session
         _state.value = RepoState(phase = Phase.Connecting, serverUrl = session.serverUrl)
         loop = scope.launch { runConnectionLoop(session) }
     }
@@ -141,6 +175,7 @@ class MusicRepository(
         var attempt = 0
         while (scope.isActive) {
             val client = MaClient(http)
+            currentClient = client
             try {
                 val outcome = coroutineScope {
                     val api = MaApi(client)
@@ -154,7 +189,17 @@ class MusicRepository(
                         currentApi = api
                         attempt = 0
                         loadSnapshot(api)
+                        // Safety net against drift: queue events are not relied on, so re-read the queue of every
+                        // playing room now and then (the play position and shuffle/repeat come from the queue).
+                        val poll = launch {
+                            while (true) {
+                                delay(queuePollMs)
+                                _state.value.players.filter { it.playbackState == "playing" }
+                                    .forEach { refreshQueue(api, it.playerId) }
+                            }
+                        }
                         end = client.state.first { it is MaState.Disconnected || it is MaState.AuthFailed }
+                        poll.cancel()
                     }
                     collector.cancel()
                     end
@@ -173,7 +218,8 @@ class MusicRepository(
                 client.close()
             }
             _state.update { it.copy(phase = Phase.Reconnecting) }
-            delay(backoffMs[attempt.coerceAtMost(backoffMs.lastIndex)])
+            // Wait the backoff time, or less if the app is nudged (foreground, network back).
+            withTimeoutOrNull(backoffMs[attempt.coerceAtMost(backoffMs.lastIndex)]) { nudges.receive() }
             attempt++
         }
     }
@@ -227,6 +273,40 @@ class MusicRepository(
         old.playbackState != new.playbackState ||
             old.currentMedia?.queueItemId != new.currentMedia?.queueItemId ||
             old.currentMedia?.uri != new.currentMedia?.uri
+
+    /** Re-reads one queue now (used after a command that changes it, since queue events are not relied on). */
+    suspend fun refreshQueueNow(queueId: String) {
+        currentApi?.let { refreshQueue(it, queueId) }
+    }
+
+    /**
+     * Call when the app comes to the foreground or the network changes. While reconnecting it skips the wait. While
+     * online it checks the connection with a quick request (a socket that slept with the screen off can look alive but
+     * be dead) and reconnects at once if there is no answer, otherwise it refreshes the rooms.
+     */
+    fun onForeground() {
+        scope.launch {
+            val api = currentApi
+            if (api == null) {
+                nudges.trySend(Unit)
+                return@launch
+            }
+            val ok = try {
+                withTimeoutOrNull(3_000) {
+                    loadSnapshot(api)
+                    true
+                } ?: false
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                false
+            }
+            if (!ok) {
+                currentClient?.close()
+                nudges.trySend(Unit)
+            }
+        }
+    }
 
     private suspend fun refreshQueue(api: MaApi, queueId: String) {
         try {

@@ -14,15 +14,23 @@ import androidx.compose.ui.Modifier
 import com.feerlessleadr.downbeat.ui.AppRoot
 
 class MainActivity : ComponentActivity() {
+    override fun onStart() {
+        super.onStart()
+        // Back on screen: check the connection now instead of waiting for the keepalive to notice a dead one.
+        (application as DownbeatApp).repository.onForeground()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val repository = (application as DownbeatApp).repository
+        val app = application as DownbeatApp
+        val repository = app.repository
+        val controller = app.controller
         setContent {
             // Placeholder colors. The real palette is a later design task (docs/design.md, open questions).
             MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AppRoot(repository)
+                    AppRoot(repository, controller)
                 }
             }
         }
