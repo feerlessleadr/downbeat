@@ -41,6 +41,22 @@ class RealSamplesTest {
         println("decoded ${queues.size} queues")
     }
 
+    @Test fun decodesRealAlbumsAndSearch() {
+        val albums = sample("13-albums.json")
+        val search = sample("14-search.json")
+        assumeTrue("no samples", albums != null && search != null)
+        val a = MaJson.parseToJsonElement(albums!!.readText()).jsonObject["result"] as JsonArray
+        val items = MaJson.decodeFromJsonElement(ListSerializer(MediaItem.serializer()), a)
+        assertEquals(a.size, items.size)
+        assertTrue(items.all { it.uri.isNotBlank() && it.name.isNotBlank() })
+        val s = MaJson.decodeFromJsonElement(
+            SearchResults.serializer(), MaJson.parseToJsonElement(search!!.readText()).jsonObject["result"]!!,
+        )
+        assertTrue(s.albums.isNotEmpty() || s.tracks.isNotEmpty())
+        val withArt = (items + s.albums + s.tracks).count { it.image?.proxyId != null }
+        println("albums=${items.size} searchAlbums=${s.albums.size} searchTracks=${s.tracks.size} withProxyArt=$withArt")
+    }
+
     @Test fun decodesRealPlayerUpdatedEvents() {
         val f = sample("30-events.jsonl")
         assumeTrue("no samples", f != null)

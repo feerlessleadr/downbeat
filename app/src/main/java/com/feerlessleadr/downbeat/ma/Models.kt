@@ -109,3 +109,56 @@ data class PlayerQueue(
     @SerialName("elapsed_time") val elapsedTime: Double? = null,
     @SerialName("elapsed_time_last_updated") val elapsedTimeLastUpdated: Double? = null,
 )
+
+@Serializable
+data class MediaItemMetadata(
+    val images: List<MediaItemImage> = emptyList(),
+    val description: String? = null,
+)
+
+/** A compact reference to another item (an artist or album on a track, for example). */
+@Serializable
+data class ItemMapping(
+    @SerialName("item_id") val itemId: String = "",
+    val provider: String = "",
+    val name: String = "",
+    val uri: String = "",
+    @SerialName("media_type") val mediaType: String = "",
+    val image: MediaItemImage? = null,
+    val year: Int? = null,
+)
+
+/**
+ * One shape for artists, albums, tracks, playlists and radio stations, as returned by library lists and search.
+ * Fields that a given type does not have stay at their defaults. [uri] is what play_media takes.
+ */
+@Serializable
+data class MediaItem(
+    @SerialName("item_id") val itemId: String = "",
+    val provider: String = "",
+    val name: String = "",
+    val uri: String = "",
+    @SerialName("media_type") val mediaType: String = "",
+    @SerialName("is_playable") val isPlayable: Boolean = true,
+    val favorite: Boolean = false,
+    val metadata: MediaItemMetadata = MediaItemMetadata(),
+    val year: Int? = null,
+    val duration: Int? = null,
+    val artists: List<ItemMapping> = emptyList(),
+    val album: ItemMapping? = null,
+) {
+    /** "Artist 1, Artist 2" or empty. */
+    val artistNames: String get() = artists.joinToString(", ") { it.name }
+
+    /** Best artwork reference: the item's own images first, then its album's. */
+    val image: MediaItemImage? get() = metadata.images.firstOrNull() ?: album?.image
+}
+
+@Serializable
+data class SearchResults(
+    val artists: List<MediaItem> = emptyList(),
+    val albums: List<MediaItem> = emptyList(),
+    val tracks: List<MediaItem> = emptyList(),
+    val playlists: List<MediaItem> = emptyList(),
+    val radio: List<MediaItem> = emptyList(),
+)
