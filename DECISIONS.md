@@ -55,3 +55,16 @@
 - **Decision**: `MaClient` answers `onClosing` and reports Disconnected immediately.
 - **Rationale**: OkHttp only calls `onClosed` after the client answers, so a server restart would have left the app showing stale rooms forever.
 - **Impact**: `ma/MaClient.kt` plus a test.
+
+### 2026-11-26, Playing screen: leader resolution, tap rules, controls
+- **Context**: Turning the approved rooms design into behaviour.
+- **Decision**: Pure functions in `RoomLogic` decide everything about rooms. The leader is `active_group`, else `synced_to`, else the chosen room. A tap on an unticked room adds it to the set only if both are single players with `set_members` and the room is in the leader's `can_group_with`; otherwise it switches to that room (and moves the queue with `transfer` if something is playing). Static group members are locked. The leader of a sync set cannot be unticked (untick the others); a lone room cannot be unticked. Default room: one that is playing, else the first single room, never a static group by surprise. Buttons are shown only if the leader's `supported_features` allow them. Position is elapsed time plus time since it was recorded, while playing. Group volume is used when several rooms play together. Transport uses the leader's queue id. Artwork uses Coil, with the token added only for the server's own host.
+- **Rationale**: Keeps the "one list, one gesture" promise while respecting what the server verifiably allows; everything testable without a phone.
+- **Impact**: `data/RoomLogic.kt`, `NowPlaying.kt`, `PlaybackController.kt`, `AppPrefs.kt`, `ui/*`, new dependencies `coil-compose` and `coil-network-okhttp` 3.3.0. Open: if the server needs a different image auth, adjust `DownbeatApp.newImageLoader`.
+
+### 2026-11-27, Repository security baseline
+- **Context**: Public repo; owner asked for all required protections before further work.
+- **Options considered**: Require pull requests and reviews on main (rejected: solo project, pushes go straight to main); only block force-push and deletion.
+- **Decision**: Enabled on GitHub: secret scanning and push protection (already on), vulnerability alerts, Dependabot security updates, private vulnerability reporting, delete branch on merge, and branch protection on main (no force push, no deletion, admins not enforced). Added `SECURITY.md`, `.github/dependabot.yml` (Gradle and Actions, weekly), and more secret patterns in `.gitignore`. Audit found no secrets, hosts or IPs in files or history; the commit email is the approved public identity.
+- **Rationale**: Cheap protections against leaked secrets, vulnerable dependencies and accidental history loss, without slowing a solo workflow.
+- **Impact**: Add a required CI status check to main protection once the pull request workflow exists. Manifest already has `allowBackup=false` and cleartext off.

@@ -3,6 +3,13 @@
 *.keystore
 keystore.properties
 local.properties
+*.pem
+*.p12
+*.pfx
+.env
+.env.*
+google-services.json
+secrets.properties
 
 # Build outputs
 build/
