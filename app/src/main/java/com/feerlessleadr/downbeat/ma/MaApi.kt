@@ -55,6 +55,9 @@ class MaApi(private val client: MaClient) {
     // ---- Transport (on a queue id; a queue id equals the id of the player that owns it) ------------------------
 
     suspend fun playPause(queueId: String) = run("player_queues/play_pause", args { put("queue_id", queueId) })
+    /** Stops playback and leaves the room idle (the queue keeps its items). */
+    suspend fun stop(queueId: String) = run("player_queues/stop", args { put("queue_id", queueId) })
+
     suspend fun next(queueId: String) = run("player_queues/next", args { put("queue_id", queueId) })
     suspend fun previous(queueId: String) = run("player_queues/previous", args { put("queue_id", queueId) })
 
@@ -91,6 +94,9 @@ class MaApi(private val client: MaClient) {
         uris: List<String>,
         option: String = "replace",
         radioMode: Boolean = false,
+        /** URI of the item to start with inside [uris] (for example one track of an album). */
+        startItem: String? = null,
+        shuffle: Boolean? = null,
     ) = run(
         "player_queues/play_media",
         args {
@@ -98,6 +104,8 @@ class MaApi(private val client: MaClient) {
             if (uris.size == 1) put("media", uris.first()) else put("media", JsonArray(uris.map { JsonPrimitive(it) }))
             put("option", option)
             put("radio_mode", radioMode)
+            if (startItem != null) put("start_item", startItem)
+            if (shuffle != null) put("shuffle", shuffle)
         },
     )
 
@@ -161,6 +169,13 @@ class MaApi(private val client: MaClient) {
             },
         )
     }
+
+    /** One artist with its metadata (pictures). */
+    suspend fun artist(itemId: String, providerInstanceOrDomain: String): MediaItem? =
+        one(
+            MediaItem.serializer(), "music/artists/get",
+            args { put("item_id", itemId); put("provider_instance_id_or_domain", providerInstanceOrDomain) },
+        )
 
     suspend fun albumTracks(itemId: String, providerInstanceOrDomain: String): List<MediaItem> =
         list(

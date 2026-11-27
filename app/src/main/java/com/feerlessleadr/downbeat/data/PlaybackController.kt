@@ -2,6 +2,7 @@ package com.feerlessleadr.downbeat.data
 
 import com.feerlessleadr.downbeat.ma.MaApi
 import com.feerlessleadr.downbeat.ma.MaException
+import com.feerlessleadr.downbeat.ma.MediaItem
 import com.feerlessleadr.downbeat.ma.Player
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -13,6 +14,7 @@ import kotlinx.coroutines.delay
 class PlaybackController(private val repo: MusicRepository) {
 
     suspend fun playPause(leader: Player): String? = run { it.playPause(leader.playerId) }
+    suspend fun stop(leader: Player): String? = run { it.stop(leader.playerId) }.also { if (it == null) repo.refreshQueueNow(leader.playerId) }
     suspend fun next(leader: Player): String? = run { it.next(leader.playerId) }
     suspend fun previous(leader: Player): String? = run { it.previous(leader.playerId) }
     /** The player takes a moment to restart its stream, so the queue is re-read twice to pick up the new position. */
@@ -52,6 +54,51 @@ class PlaybackController(private val repo: MusicRepository) {
         }
         return firstError
     }
+
+    /**
+     * Plays [item] in the rooms led by [leader]. With [startItem] the whole [item] (an album or playlist) is queued and
+     * playback starts at that track. Playing into a room that is switched off is expected to switch it on (unverified).
+     */
+    suspend fun playItem(
+        leader: Player,
+        item: MediaItem,
+        mode: PlayMode = PlayMode.Replace,
+        startItem: MediaItem? = null,
+        shuffle: Boolean? = null,
+    ): String? {
+        if (item.uri.isBlank()) return "That item can't be played."
+        val error = run {
+            it.playMedia(leader.playerId, listOf(item.uri), mode.option, startItem = startItem?.uri, shuffle = shuffle)
+        }
+        if (error == null) repo.refreshQueueNow(leader.playerId)
+        return error
+    }
+
+    // ---- Queue (docs/roadmap.md M4). The queue id is the leader's player id. ----
+
+    /** Jumps to and plays the item at [index] in the queue. */
+    suspend fun playQueueIndex(leader: Player, index: Int): String? =
+        run { it.playIndex(leader.playerId, index) }.also { if (it == null) repo.refreshQueueNow(leader.playerId) }
+
+    suspend fun removeFromQueue(leader: Player, queueItemId: String): String? =
+        run { it.removeQueueItem(leader.playerId, queueItemId) }.also { if (it == null) repo.refreshQueueNow(leader.playerId) }
+
+    /** Moves an item [shift] places (negative is earlier in the queue). */
+    suspend fun moveInQueue(leader: Player, queueItemId: String, shift: Int): String? =
+        run { it.moveQueueItem(leader.playerId, queueItemId, shift) }
+            .also { if (it == null) repo.refreshQueueNow(leader.playerId) }
+            ?.let(::friendlyQueueError)
+
+    /** The server says "0 is already played/buffered" for a song it will not move; say what that means. */
+    private fun friendlyQueueError(message: String): String =
+        if ("already played" in message || "buffered" in message) {
+            "That song can't be moved there: it has played, or it is already loading to play next."
+        } else {
+            message
+        }
+
+    suspend fun clearQueue(leader: Player): String? =
+        run { it.clearQueue(leader.playerId) }.also { if (it == null) repo.refreshQueueNow(leader.playerId) }
 
     suspend fun setRoomVolume(roomId: String, level: Int): String? = run { it.setVolume(roomId, level) }
 

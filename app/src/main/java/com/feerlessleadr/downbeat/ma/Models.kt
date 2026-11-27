@@ -97,7 +97,17 @@ data class QueueItem(
     val index: Int = 0,
     val available: Boolean = true,
     val image: MediaItemImage? = null,
-)
+    /** The song as the server sends it (kept raw so an unexpected shape can never break reading the queue). */
+    @SerialName("media_item") val mediaItem: kotlinx.serialization.json.JsonObject? = null,
+) {
+    /** The first artist of the song as (item id, provider), or null. Used to look up the artist picture. */
+    fun artistRef(): Pair<String, String>? {
+        val artist = (mediaItem?.get("artists") as? kotlinx.serialization.json.JsonArray)?.firstOrNull() as? kotlinx.serialization.json.JsonObject ?: return null
+        val id = (artist["item_id"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: return null
+        val provider = (artist["provider"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: return null
+        return id to provider
+    }
+}
 
 @Serializable
 data class PlayerQueue(

@@ -37,7 +37,7 @@ import com.feerlessleadr.downbeat.data.MusicRepository
 import com.feerlessleadr.downbeat.data.PlaybackController
 import com.feerlessleadr.downbeat.data.RoomLogic
 import com.feerlessleadr.downbeat.data.RoomRow
-import com.feerlessleadr.downbeat.ma.Player
+import androidx.compose.foundation.layout.fillMaxSize
 import kotlinx.coroutines.launch
 
 /**
@@ -50,27 +50,56 @@ import kotlinx.coroutines.launch
 fun RoomsSheet(
     repo: MusicRepository,
     controller: PlaybackController,
-    leader: Player,
     onError: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Text("Play on", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 24.dp))
+        Spacer(Modifier.height(8.dp))
+        RoomsList(repo, controller, onError)
+    }
+}
+
+/** The Rooms destination of the bottom bar: the same list as the sheet, as a page. Works while nothing plays. */
+@Composable
+fun RoomsPage(repo: MusicRepository, controller: PlaybackController, onError: (String) -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Play on", style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f).padding(start = 24.dp, top = 8.dp, bottom = 8.dp),
+            )
+        }
+        RoomsList(repo, controller, onError)
+    }
+}
+
+/**
+ * Every room with its tick, power button and volume, plus "Turn everything off". The target (leader) is worked out
+ * from live state on every pass, because it changes after a tap (a switch).
+ */
+@Composable
+fun RoomsList(repo: MusicRepository, controller: PlaybackController, onError: (String) -> Unit) {
     val state by repo.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    // The leader can change after a tap (a switch), so resolve it again from live state on every pass.
     val selected by repo.selectedRoomId.collectAsStateWithLifecycle()
     val hidden by repo.hiddenRooms.collectAsStateWithLifecycle()
-    val liveLeader = RoomLogic.effectiveLeader(state.players, selected, hidden) ?: leader
-    val rows = RoomLogic.rows(state.players, liveLeader, hidden)
+    val leader = RoomLogic.effectiveLeader(state.players, selected, hidden)
+    if (leader == null) {
+        Text(
+            "No rooms are available.", style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(24.dp),
+        )
+        return
+    }
+    val rows = RoomLogic.rows(state.players, leader, hidden)
     val canPowerOffAll = RoomLogic.powerOffTargets(state.players, hidden).isNotEmpty()
-
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Text("Play in", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 24.dp))
-        Spacer(Modifier.height(8.dp))
+    Column {
         LazyColumn(Modifier.weight(1f, fill = false)) {
             items(rows, key = { it.player.playerId }) { row ->
                 RoomRowItem(
                     row = row,
-                    onTap = { scope.launch { controller.tapRoom(liveLeader, row.player.playerId)?.let(onError) } },
+                    onTap = { scope.launch { controller.tapRoom(leader, row.player.playerId)?.let(onError) } },
                     onVolume = { level -> scope.launch { controller.setRoomVolume(row.player.playerId, level)?.let(onError) } },
                     onPower = { scope.launch { controller.setRoomPower(row.player.playerId, !row.powered)?.let(onError) } },
                 )

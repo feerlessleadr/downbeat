@@ -6,12 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.Modifier
 import com.feerlessleadr.downbeat.ui.AppRoot
+import com.feerlessleadr.downbeat.ui.DownbeatTheme
 
 class MainActivity : ComponentActivity() {
     override fun onStart() {
@@ -27,8 +25,7 @@ class MainActivity : ComponentActivity() {
         val repository = app.repository
         val controller = app.controller
         setContent {
-            // Placeholder colors. The real palette is a later design task (docs/design.md, open questions).
-            MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
+            DownbeatTheme(repository) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AppRoot(repository, controller)
                 }

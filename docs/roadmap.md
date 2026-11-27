@@ -17,14 +17,22 @@ Still to verify by the owner: tick/untick grouping, per-room volume, switching w
 - **First-run room picker**: choose which rooms appear; TVs and receivers (players with only volume controls) are off by default. Changeable later in Settings (M5).
 - Sign-out revokes the server token.
 
+## M3b. Navigation overhaul (from the owner's first Library test, 2026-11-27)
+- Floating mini player on every screen while something plays or is paused; tap it to open the full Playing screen.
+- Customizable bottom bar (up to five of: Library, Playlists, Albums, Artists, Radio, Tracks, Search, Rooms, Playing).
+- Rooms as its own destination, usable when nothing plays.
+- Lists and open pages keep their place across tab switches and Back.
+- Open: library artwork is blank. Waiting for the owner to run `tools/Sample-Images.ps1` to see how the server describes those images.
+
 ## M3. Library and Search (start music from the app)
 - Library tab: Albums, Artists, Playlists, Radio, Tracks as simple lists with artwork; open an album, playlist or artist to see its tracks.
 - Search tab: one box, results grouped by type.
 - Tap to play in the rooms ticked in the sheet. Long-press or a menu: Play next, Add to queue, Start radio.
 - Verify real-library decoding (needs an owner sample run if anything fails to read).
 
-## M4. Queue
-- Queue view from the Playing tab: current and upcoming items, tap to jump, swipe to remove, drag to reorder, clear.
+## M4. Queue (built 2026-11-27, awaiting the owner's phone test)
+- Queue page from a "Queue" row on the Playing screen: the songs with the current one marked, tap to jump, menu per row (Move up, Move down, Remove), Clear queue with a confirmation.
+- Later, maybe: drag to reorder and swipe to remove.
 
 ## M5. Lock screen and notification controls
 - A media notification and lock-screen controls (play/pause, next, previous, seek, title, artist, artwork) for the room currently selected, using an Android media session that mirrors Music Assistant's state (the phone is a remote, not a player).
@@ -47,7 +55,7 @@ Still to verify by the owner: tick/untick grouping, per-room volume, switching w
 ## M8. Polish and settings
 - Real palette, launcher icon, dark and light themes, empty and error states.
 - Settings screen: rooms shown, server address, sign out, about, with Providers and Server entries from M6 and M7 for admins.
-- Mini player so Playing is reachable from Library and Search.
+- (The mini player moved up to M3b and is done.) The three-dot menu becomes a proper settings screen.
 
 ## M9. Release
 - CI: pull request build, signed release APK (key from GitHub secrets, never changes once released).

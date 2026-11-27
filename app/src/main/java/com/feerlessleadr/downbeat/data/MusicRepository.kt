@@ -106,6 +106,47 @@ class MusicRepository(
     /** Rooms the person chose not to see (TVs and receivers by default after the first-run picker). */
     val hiddenRooms: StateFlow<Set<String>> = _hiddenRooms.asStateFlow()
 
+    private val _navItems = MutableStateFlow(NavConfig.sanitize(prefs.navItems))
+
+    /** The bottom bar destinations the person chose, in order. */
+    val navItems: StateFlow<List<String>> = _navItems.asStateFlow()
+
+    fun setNavItems(ids: List<String>) {
+        val clean = NavConfig.sanitize(ids)
+        prefs.navItems = clean
+        _navItems.value = clean
+    }
+
+    private val _theme = MutableStateFlow(ThemeSettings(Themes.sanitizeMode(prefs.themeMode), Themes.sanitizePalette(prefs.themePalette), prefs.themeAccentMusic, prefs.themeCustomColor or (0xFF shl 24)))
+
+    /** The colour choices (light, dark or system, and the palette). */
+    val theme: StateFlow<ThemeSettings> = _theme.asStateFlow()
+
+    fun setThemeMode(mode: String) {
+        val clean = Themes.sanitizeMode(mode)
+        prefs.themeMode = clean
+        _theme.value = _theme.value.copy(mode = clean)
+    }
+
+    fun setThemePalette(palette: String) {
+        val clean = Themes.sanitizePalette(palette)
+        prefs.themePalette = clean
+        _theme.value = _theme.value.copy(palette = clean)
+    }
+
+    fun setAccentFollowsMusic(on: Boolean) {
+        prefs.themeAccentMusic = on
+        _theme.value = _theme.value.copy(accentFollowsMusic = on)
+    }
+
+    /** Sets the picked colour and makes it the base palette, so the app follows the picker while it is dragged. */
+    fun setCustomColor(argb: Int) {
+        val opaque = argb or (0xFF shl 24)
+        prefs.themeCustomColor = opaque
+        prefs.themePalette = Themes.CUSTOM
+        _theme.value = _theme.value.copy(palette = Themes.CUSTOM, customColor = opaque)
+    }
+
     private val _roomsConfigured = MutableStateFlow(prefs.roomsConfigured)
 
     /** False until the person has been through the room picker once. */
@@ -313,6 +354,28 @@ class MusicRepository(
         old.playbackState != new.playbackState ||
             old.currentMedia?.queueItemId != new.currentMedia?.queueItemId ||
             old.currentMedia?.uri != new.currentMedia?.uri
+
+    private val artistImages = java.util.concurrent.ConcurrentHashMap<String, java.util.Optional<com.feerlessleadr.downbeat.ma.MediaItemImage>>()
+
+    /**
+     * A picture of an artist for the Playing screen background: the "thumb" image if there is one, else the first
+     * image, else null (the caller then uses the album art). Remembered per artist; a failed lookup is retried later.
+     */
+    suspend fun artistImage(itemId: String, provider: String): com.feerlessleadr.downbeat.ma.MediaItemImage? {
+        val key = "$provider/$itemId"
+        artistImages[key]?.let { return it.orElse(null) }
+        val api = currentApi ?: return null
+        return try {
+            val images = api.artist(itemId, provider)?.metadata?.images.orEmpty()
+            val pick = images.firstOrNull { it.type == "thumb" } ?: images.firstOrNull()
+            artistImages[key] = java.util.Optional.ofNullable(pick)
+            pick
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     /** Re-reads one queue now (used after a command that changes it, since queue events are not relied on). */
     suspend fun refreshQueueNow(queueId: String) {

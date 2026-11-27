@@ -67,6 +67,84 @@ class PlaybackControllerTest {
     private fun leader(id: String) = repo.state.value.players.first { it.playerId == id }
     private fun last(command: String): JsonObject? = fake.received.last { it.first == command }.second
 
+    private val album = com.feerlessleadr.downbeat.ma.MediaItem(itemId = "7", provider = "library", name = "Album", uri = "library://album/7", mediaType = "album")
+    private val track = com.feerlessleadr.downbeat.ma.MediaItem(itemId = "9", provider = "library", name = "Song", uri = "library://track/9", mediaType = "track")
+
+    @Test fun queueActionsGoToTheLeadersQueue() = runBlocking {
+        online()
+        assertNull(controller.playQueueIndex(leader("Kitchen"), 3))
+        assertEquals(3, last("player_queues/play_index")!!["index"]!!.jsonPrimitive.int)
+        assertNull(controller.moveInQueue(leader("Kitchen"), "item-9", -1))
+        val move = last("player_queues/move_item")!!
+        assertEquals("Kitchen", move["queue_id"]!!.jsonPrimitive.content)
+        assertEquals("item-9", move["queue_item_id"]!!.jsonPrimitive.content)
+        assertEquals(-1, move["pos_shift"]!!.jsonPrimitive.int)
+        assertNull(controller.removeFromQueue(leader("Kitchen"), "item-9"))
+        assertEquals("item-9", last("player_queues/delete_item")!!["item_id_or_index"]!!.jsonPrimitive.content)
+        assertNull(controller.clearQueue(leader("Kitchen")))
+        assertEquals("Kitchen", last("player_queues/clear")!!["queue_id"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun aRefusedQueueMoveComesBackAsMessage() = runBlocking {
+        online()
+        fake.errors["player_queues/move_item"] = "Cannot move the playing item"
+        assertEquals("Cannot move the playing item", controller.moveInQueue(leader("Kitchen"), "item-1", 1))
+    }
+
+    @Test fun theServersPlayedOrBufferedRefusalIsExplained() = runBlocking {
+        online()
+        fake.errors["player_queues/move_item"] = "0 is already played/buffered"
+        val message = controller.moveInQueue(leader("Kitchen"), "item-1", 2)!!
+        assertTrue(message.contains("can't be moved"))
+        assertTrue(!message.contains("0 is already"))
+    }
+
+    @Test fun stopSendsStopToTheRoomsQueue() = runBlocking {
+        online(kitchenState = "playing")
+        assertNull(controller.stop(leader("Kitchen")))
+        assertEquals("Kitchen", last("player_queues/stop")!!["queue_id"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun playingAnItemSendsItsUriToTheRoomsQueue() = runBlocking {
+        online()
+        assertNull(controller.playItem(leader("Kitchen"), track))
+        val a = last("player_queues/play_media")!!
+        assertEquals("Kitchen", a["queue_id"]!!.jsonPrimitive.content)
+        assertEquals("library://track/9", a["media"]!!.jsonPrimitive.content)
+        assertEquals("replace", a["option"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun playingATrackInsideAnAlbumStartsAtThatTrack() = runBlocking {
+        online()
+        assertNull(controller.playItem(leader("Kitchen"), album, startItem = track))
+        val a = last("player_queues/play_media")!!
+        assertEquals("library://album/7", a["media"]!!.jsonPrimitive.content)
+        assertEquals("library://track/9", a["start_item"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun shuffleAndQueueModesArePassedThrough() = runBlocking {
+        online()
+        assertNull(controller.playItem(leader("Kitchen"), album, PlayMode.Next, shuffle = true))
+        val a = last("player_queues/play_media")!!
+        assertEquals("next", a["option"]!!.jsonPrimitive.content)
+        assertTrue(a["shuffle"]!!.jsonPrimitive.boolean)
+        assertNull(controller.playItem(leader("Kitchen"), album, PlayMode.Add))
+        assertEquals("add", last("player_queues/play_media")!!["option"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun anItemWithoutAUriIsRefusedWithoutAskingTheServer() = runBlocking {
+        online()
+        val before = fake.received.size
+        assertEquals("That item can't be played.", controller.playItem(leader("Kitchen"), track.copy(uri = "")))
+        assertEquals(before, fake.received.size)
+    }
+
+    @Test fun aServerRefusalComesBackAsMessage() = runBlocking {
+        online()
+        fake.errors["player_queues/play_media"] = "No such item"
+        assertEquals("No such item", controller.playItem(leader("Kitchen"), track))
+    }
+
     @Test fun tickingARoomAddsItToTheSet() = runBlocking {
         online()
         assertNull(controller.tapRoom(leader("Kitchen"), "Deck"))

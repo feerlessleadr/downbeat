@@ -186,6 +186,10 @@ class MaApiTest {
             "https://music.example.com/imageproxy/abc123?size=256&fmt=jpg",
             ImageUrls.forImage("https://music.example.com/", image, 256),
         )
+        // Only 256 and 512 are accepted by the real server (156 gave HTTP 400), so other sizes are rounded.
+        assertEquals("https://music.example.com/imageproxy/abc123?size=256&fmt=jpg", ImageUrls.forImage("https://music.example.com", image, 156))
+        assertEquals("https://music.example.com/imageproxy/abc123?size=512&fmt=jpg", ImageUrls.forImage("https://music.example.com", image, 288))
+        assertEquals("https://music.example.com/imageproxy/abc123?size=512&fmt=jpg", ImageUrls.forImage("https://music.example.com", image, 800))
         assertNull(ImageUrls.forImage("https://music.example.com", MediaItemImage()))
         assertNull(ImageUrls.forImage("https://music.example.com", null))
     }

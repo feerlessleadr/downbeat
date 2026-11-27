@@ -51,6 +51,9 @@ class DownbeatApp : Application(), SingletonImageLoader.Factory {
      */
     override fun newImageLoader(context: PlatformContext): ImageLoader {
         val images = http.newBuilder()
+            // The server may fetch and resize a picture from the internet on first use, which can take a while.
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
             .addInterceptor { chain ->
                 val request = chain.request()
                 val bearer = repository.bearerFor(request.url)
