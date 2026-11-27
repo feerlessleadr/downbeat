@@ -186,6 +186,24 @@ class MaApi(private val client: MaClient) {
     suspend fun providerConfigs(): List<ProviderConfig> =
         list(ProviderConfig.serializer(), "config/providers", args { put("include_values", false) })
 
+    /** The settings form of one provider instance. Secret values may come back masked or empty (unverified). */
+    suspend fun providerEntries(instanceId: String): List<ConfigEntry> =
+        list(ConfigEntry.serializer(), "config/providers/get_entries", args { put("instance_id", instanceId) })
+
+    /** Saves changed settings of an existing instance. Only the keys in [values] are sent. */
+    suspend fun saveProviderValues(domain: String, instanceId: String, values: Map<String, JsonElement?>) = run(
+        "config/providers/save",
+        args {
+            put("provider_domain", domain)
+            put("instance_id", instanceId)
+            put("values", buildJsonObject { values.forEach { (k, v) -> put(k, v ?: JsonNull) } })
+        },
+    )
+
+    /** Runs a button of the settings form. The answer is a message or link (object), a list of fields, or nothing. */
+    suspend fun invokeProviderAction(instanceId: String, action: String): JsonElement =
+        client.call("config/providers/invoke_action", args { put("instance_id", instanceId); put("action", action) })
+
     /** Restarts one provider instance. */
     suspend fun reloadProvider(instanceId: String) = run("config/providers/reload", args { put("instance_id", instanceId) })
 

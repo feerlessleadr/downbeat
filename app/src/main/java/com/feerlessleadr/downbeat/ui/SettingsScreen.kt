@@ -59,7 +59,7 @@ fun SettingsScreen(
         SettingsRow("Rooms", "Choose which rooms are shown", R.drawable.ic_speaker, actions.onChooseRooms)
         HorizontalDivider()
         if (showProviders) {
-            SettingsRow("Music sources and players", "See what is connected to Music Assistant and its status", R.drawable.ic_radio, actions.onProviders)
+            SettingsRow("Music sources and players", "See what is connected to Music Assistant, and change its settings", R.drawable.ic_radio, actions.onProviders)
             HorizontalDivider()
         }
         Row(
@@ -80,7 +80,9 @@ fun SettingsScreen(
         SettingsRow("Sign out", "Forget this phone and remove its access on the server", R.drawable.ic_power) { confirmSignOut = true }
         HorizontalDivider()
         Text(
-            "Downbeat ${BuildConfig.VERSION_NAME}",
+            "Downbeat ${BuildConfig.VERSION_NAME}, built " +
+                java.time.format.DateTimeFormatter.ofPattern("MMM d, h:mm a")
+                    .format(java.time.Instant.ofEpochMilli(BuildConfig.BUILD_TIME).atZone(java.time.ZoneId.systemDefault())),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(24.dp),
         )

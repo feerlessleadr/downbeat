@@ -218,3 +218,46 @@ data class ProviderManifest(
     @SerialName("allow_disable") val allowDisable: Boolean = true,
     @SerialName("has_setup_flow") val hasSetupFlow: Boolean = false,
 )
+
+/** One choice of a settings field (`ConfigEntry.options`). [value] is what is saved. */
+@Serializable
+data class ConfigValueOption(
+    val value: kotlinx.serialization.json.JsonElement? = null,
+    val title: String? = null,
+    val disabled: Boolean = false,
+    val description: String? = null,
+)
+
+/**
+ * One field of a provider's settings form, as the server describes it (`config/providers/get_entries`). A value is a
+ * boolean, number, string, a list of those, or null. See docs/provider-setup-research.md for what each part means.
+ */
+@Serializable
+data class ConfigEntry(
+    val key: String,
+    /** boolean, string, secure_string, integer, float, label, splitted_string, divider, action, icon, alert, image, url, pairing_code. */
+    val type: String = "string",
+    @SerialName("default_value") val defaultValue: kotlinx.serialization.json.JsonElement? = null,
+    val required: Boolean = true,
+    val options: List<ConfigValueOption> = emptyList(),
+    /** For numbers: minimum and maximum. */
+    val range: List<Int>? = null,
+    val description: String? = null,
+    @SerialName("help_link") val helpLink: String? = null,
+    @SerialName("multi_value") val multiValue: Boolean = false,
+    /** Show this field only when the field named here has a value (or [dependsOnValue], or not [dependsOnValueNot]). */
+    @SerialName("depends_on") val dependsOn: String? = null,
+    @SerialName("depends_on_value") val dependsOnValue: kotlinx.serialization.json.JsonElement? = null,
+    @SerialName("depends_on_value_not") val dependsOnValueNot: kotlinx.serialization.json.JsonElement? = null,
+    val hidden: Boolean = false,
+    @SerialName("read_only") val readOnly: Boolean = false,
+    val category: String = "generic",
+    /** For a button: the action to run, and its label. */
+    val action: String? = null,
+    @SerialName("action_label") val actionLabel: String? = null,
+    @SerialName("requires_reload") val requiresReload: Boolean = false,
+    val advanced: Boolean = false,
+    val label: String? = null,
+    @SerialName("category_label") val categoryLabel: String? = null,
+    val value: kotlinx.serialization.json.JsonElement? = null,
+)

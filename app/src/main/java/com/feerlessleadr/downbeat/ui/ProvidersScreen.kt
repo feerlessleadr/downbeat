@@ -37,6 +37,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import com.feerlessleadr.downbeat.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -70,6 +72,7 @@ fun ProvidersScreen(repo: MusicRepository, onBack: () -> Unit) {
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(false) }
 
     /** Reads the providers again. Returns false when it could not. */
     suspend fun load(): Boolean {
@@ -121,6 +124,20 @@ fun ProvidersScreen(repo: MusicRepository, onBack: () -> Unit) {
         }
     }
 
+    // The settings form takes the whole screen while it is open.
+    if (selected != null && editing) {
+        ProviderEditScreen(
+            row = selected, controller = controller,
+            onBack = { editing = false },
+            onSaved = {
+                editing = false
+                message = "Saved."
+                scope.launch { delay(500); load() }
+            },
+        )
+        return
+    }
+
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { if (selected != null) { selectedId = null; message = null } else onBack() }) {
@@ -139,6 +156,7 @@ fun ProvidersScreen(repo: MusicRepository, onBack: () -> Unit) {
             selected != null -> ProviderDetail(
                 row = selected, busy = busy, message = message,
                 onReload = { act(selected, "Reloaded.") { controller.reload(selected.instanceId) } },
+                onSettings = { editing = true },
                 onToggle = {
                     val turnOn = !selected.enabled
                     act(
@@ -161,7 +179,7 @@ fun ProvidersScreen(repo: MusicRepository, onBack: () -> Unit) {
             else -> LazyColumn(Modifier.fillMaxSize()) {
                 item {
                     Text(
-                        (if (error != null) "Could not refresh: $error" else updatedAt?.let { "Updated $it" }).orEmpty(),
+                        (if (error != null) "Could not refresh: $error" else updatedAt?.let { "Tap a provider to change its settings, reload it, turn it off or on, or sync it. Updated $it" }).orEmpty(),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 24.dp),
@@ -184,6 +202,10 @@ fun ProvidersScreen(repo: MusicRepository, onBack: () -> Unit) {
                                 Text(
                                     row.status.label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium,
                                     color = statusColor(row.status),
+                                )
+                                Icon(
+                                    painterResource(R.drawable.ic_chevron_right), contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp),
                                 )
                             }
                             Text(
@@ -241,6 +263,7 @@ private fun ProviderDetail(
     busy: Boolean,
     message: String?,
     onReload: () -> Unit,
+    onSettings: () -> Unit,
     onToggle: () -> Unit,
     onSync: () -> Unit,
     onRemove: () -> Unit,
@@ -253,6 +276,8 @@ private fun ProviderDetail(
         row.error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
         Spacer(Modifier.height(20.dp))
         Button(onClick = onReload, enabled = !busy && row.enabled, modifier = Modifier.fillMaxWidth()) { Text("Reload") }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = onSettings, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Edit settings") }
         if (row.canTurnOff || !row.enabled) {
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick = onToggle, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(if (row.enabled) "Turn off" else "Turn on") }
