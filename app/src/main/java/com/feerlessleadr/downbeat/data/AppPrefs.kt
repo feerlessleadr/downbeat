@@ -27,6 +27,9 @@ interface AppPrefs {
 
     /** The colour picked on the gradient (opaque ARGB). */
     var themeCustomColor: Int
+
+    /** Whether the lock screen and notification controls are on (see PlaybackService). */
+    var mediaControls: Boolean
 }
 
 class MemoryAppPrefs(
@@ -38,6 +41,7 @@ class MemoryAppPrefs(
     override var themePalette: String = Themes.DEFAULT_PALETTE,
     override var themeAccentMusic: Boolean = false,
     override var themeCustomColor: Int = Themes.DEFAULT_CUSTOM,
+    override var mediaControls: Boolean = true,
 ) : AppPrefs
 
 class SharedAppPrefs(context: Context) : AppPrefs {
@@ -90,5 +94,11 @@ class SharedAppPrefs(context: Context) : AppPrefs {
         get() = prefs.getInt("theme_custom", Themes.DEFAULT_CUSTOM)
         set(value) {
             prefs.edit().putInt("theme_custom", value or (0xFF shl 24)).apply()
+        }
+
+    override var mediaControls: Boolean
+        get() = prefs.getBoolean("media_controls", true)
+        set(value) {
+            prefs.edit().putBoolean("media_controls", value).apply()
         }
 }

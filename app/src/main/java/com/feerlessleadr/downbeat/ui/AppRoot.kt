@@ -1,5 +1,13 @@
 package com.feerlessleadr.downbeat.ui
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.feerlessleadr.downbeat.data.RoomLogic
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -7,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.util.lerp
@@ -64,6 +73,9 @@ private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) 
     val state by repo.state.collectAsStateWithLifecycle()
     val configured by repo.roomsConfigured.collectAsStateWithLifecycle()
     val navItems by repo.navItems.collectAsStateWithLifecycle()
+    val mediaControls by repo.mediaControls.collectAsStateWithLifecycle()
+    val selectedRoom by repo.selectedRoomId.collectAsStateWithLifecycle()
+    val hiddenRooms by repo.hiddenRooms.collectAsStateWithLifecycle()
     var overlay by rememberSaveable { mutableStateOf(Overlay.None) }
     var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
     var tabId by rememberSaveable { mutableStateOf("") }
@@ -113,6 +125,22 @@ private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) 
         } else if (layerComposed) {
             sheet.animateTo(0f, tween(260))
             layerComposed = false
+        }
+    }
+
+    // The first time the chosen rooms play, ask once for permission to show the lock screen controls (Android 13 and later).
+    val context = LocalContext.current
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val playingNow = RoomLogic.effectiveLeader(state.players, selectedRoom, hiddenRooms)?.playbackState == "playing"
+    LaunchedEffect(playingNow, mediaControls) {
+        if (playingNow && mediaControls && Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            val prefs = context.getSharedPreferences("downbeat_prefs", Context.MODE_PRIVATE)
+            if (!prefs.getBoolean("asked_notifications", false)) {
+                prefs.edit().putBoolean("asked_notifications", true).apply()
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
     }
 
@@ -178,7 +206,7 @@ private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) 
                     )
                     Overlay.None -> when {
                         tab.id == "search" -> SearchScreen(repo, source, controller, search, onError)
-                        tab.id == "settings" -> SettingsScreen(menu, repo.serverUrl)
+                        tab.id == "settings" -> SettingsScreen(menu, repo.serverUrl, mediaControls, repo::setMediaControls)
                         tab.id == "rooms" -> RoomsPage(repo, controller, onError)
                         tab.id == "playing" -> PlayingScreen(repo, controller, onError = onError)
                         else -> LibraryScreen(repo, source, controller, browseFor(tab.id), fixedType = tab.libraryType, onMessage = onError)

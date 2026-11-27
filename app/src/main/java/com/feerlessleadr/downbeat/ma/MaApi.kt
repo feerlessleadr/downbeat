@@ -55,6 +55,11 @@ class MaApi(private val client: MaClient) {
     // ---- Transport (on a queue id; a queue id equals the id of the player that owns it) ------------------------
 
     suspend fun playPause(queueId: String) = run("player_queues/play_pause", args { put("queue_id", queueId) })
+
+    /** Explicit pause and resume. Unlike [playPause] they do nothing when already in that state, so a repeat is harmless. */
+    suspend fun pause(queueId: String) = run("player_queues/pause", args { put("queue_id", queueId) })
+
+    suspend fun resume(queueId: String) = run("player_queues/play", args { put("queue_id", queueId) })
     /** Stops playback and leaves the room idle (the queue keeps its items). */
     suspend fun stop(queueId: String) = run("player_queues/stop", args { put("queue_id", queueId) })
 

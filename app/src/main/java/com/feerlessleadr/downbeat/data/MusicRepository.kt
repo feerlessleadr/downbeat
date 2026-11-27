@@ -147,6 +147,16 @@ class MusicRepository(
         _theme.value = _theme.value.copy(palette = Themes.CUSTOM, customColor = opaque)
     }
 
+    private val _mediaControls = MutableStateFlow(prefs.mediaControls)
+
+    /** True when the lock screen and notification controls are on. */
+    val mediaControls: StateFlow<Boolean> = _mediaControls.asStateFlow()
+
+    fun setMediaControls(on: Boolean) {
+        prefs.mediaControls = on
+        _mediaControls.value = on
+    }
+
     private val _roomsConfigured = MutableStateFlow(prefs.roomsConfigured)
 
     /** False until the person has been through the room picker once. */

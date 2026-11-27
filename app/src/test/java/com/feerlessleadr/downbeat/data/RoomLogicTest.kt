@@ -246,6 +246,22 @@ class RoomLogicTest {
         assertEquals(93.0, nowPlaying(p, q, 1003.0).positionSeconds, 0.001)
     }
 
+    @Test fun aQueueThatStillDescribesTheOldSongIsIgnoredRightAfterASkip() {
+        // The player already reports song "new" (just started, 1 s in); the queue still holds the old song at 150 s.
+        val p = player("A", state = "playing").copy(
+            elapsedTime = 1.0, elapsedTimeLastUpdated = 1000.0,
+            currentMedia = PlayerMedia(title = "New", duration = 200, queueItemId = "new"),
+        )
+        val staleQueue = PlayerQueue(
+            queueId = "A", elapsedTime = 150.0, elapsedTimeLastUpdated = 1000.0,
+            currentItem = QueueItem(queueItemId = "old", name = "Old", duration = 200),
+        )
+        assertEquals(3.0, nowPlaying(p, staleQueue, 1002.0).positionSeconds, 0.001)
+        // Once the queue has caught up it is used again.
+        val freshQueue = staleQueue.copy(elapsedTime = 2.0, currentItem = QueueItem(queueItemId = "new", name = "New", duration = 200))
+        assertEquals(4.0, nowPlaying(p, freshQueue, 1002.0).positionSeconds, 0.001)
+    }
+
     @Test fun positionIsClampedToTheTrackLength() {
         val p = player("A", state = "playing").copy(
             elapsedTime = 195.0, elapsedTimeLastUpdated = 1000.0, currentMedia = PlayerMedia(title = "T", duration = 200),

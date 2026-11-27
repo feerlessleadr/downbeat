@@ -11,6 +11,7 @@ import com.feerlessleadr.downbeat.data.KeystoreSessionStore
 import com.feerlessleadr.downbeat.data.MusicRepository
 import com.feerlessleadr.downbeat.data.PlaybackController
 import com.feerlessleadr.downbeat.data.SharedAppPrefs
+import com.feerlessleadr.downbeat.playback.PlaybackServiceStarter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeUnit
 
 class DownbeatApp : Application(), SingletonImageLoader.Factory {
     private lateinit var http: OkHttpClient
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     lateinit var repository: MusicRepository
         private set
@@ -32,11 +34,13 @@ class DownbeatApp : Application(), SingletonImageLoader.Factory {
         repository = MusicRepository(
             http = http,
             store = KeystoreSessionStore(this),
-            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            scope = appScope,
             prefs = SharedAppPrefs(this),
         )
         controller = PlaybackController(repository)
         repository.start()
+        // Lock screen and notification controls start when the chosen rooms play while the app is on screen.
+        PlaybackServiceStarter(this, repository, appScope)
         // A network coming back (wifi on, switching networks) means the old socket is probably dead: check it now.
         getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(
             object : ConnectivityManager.NetworkCallback() {

@@ -99,6 +99,16 @@ class PlaybackControllerTest {
         assertTrue(!message.contains("0 is already"))
     }
 
+    @Test fun pauseAndResumeAreExplicitSoARepeatIsHarmless() = runBlocking {
+        online(kitchenState = "playing")
+        assertNull(controller.pause(leader("Kitchen")))
+        assertEquals("Kitchen", last("player_queues/pause")!!["queue_id"]!!.jsonPrimitive.content)
+        assertNull(controller.resume(leader("Kitchen")))
+        assertEquals("Kitchen", last("player_queues/play")!!["queue_id"]!!.jsonPrimitive.content)
+        // The toggle is not used by these two.
+        assertTrue(fake.received.none { it.first == "player_queues/play_pause" })
+    }
+
     @Test fun stopSendsStopToTheRoomsQueue() = runBlocking {
         online(kitchenState = "playing")
         assertNull(controller.stop(leader("Kitchen")))

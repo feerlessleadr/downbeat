@@ -47,7 +47,12 @@
 - Round 13 (owner): softer tint is way better and the picker works; the Playing screen is now harder to read; the Library tabs sit too close to the list.
 - Rebuilt (135 tests pass, not yet tried on a phone, uncommitted): stronger overlay on the Playing screen only; a divider and space under the Library tabs. The colour rules are written up in `C:\dev\_docs\DESIGN-STANDARDS.md` for future apps.
 - Round 14 (owner): everything looks good; the fade back to the base colours after the music stops was too sharp. Rebuilt: eased fades, 1.4 s between covers and 3.4 s back to the base (not yet tried on a phone, uncommitted).
-- To verify: the softer fade back to the base colours.
+- Round 15 (owner): all good; committed and pushed as `c53f784` (everything through the colour themes).
+## M5 lock screen and notification controls: built, not yet tried on a phone, uncommitted
+- Android media session and notification in a foreground service while the chosen rooms play or pause: title, artist, cover, position, previous, play or pause, next, stop; lock screen seek bar and headset or Bluetooth buttons work; stops 30 s after playback ends; a Settings switch turns it off; the notification permission is asked once (Android 13 and later).
+- Owner test (OnePlus): shade, lock screen, cover, seek bar, next, previous, stop and open-on-tap work; play and pause did not seem to respond and next seemed to start the song twice (probably the phone sending each tap twice). Fixed in code, not yet retested: explicit play and pause, and a 900 ms guard against repeated commands (146 tests pass).
+- Owner (round 2): the notification buttons are fine; the "starts twice" on next seems to be the server taking a moment to load. Added one app-side fix: a queue that still describes the old song no longer drives the play position after a skip (147 tests pass, not yet retested).
+- Still to report by the owner: long-running behaviour with the screen off, and changing rooms while the notification is showing.
 ## M3b navigation overhaul: built (114 tests pass), not yet tried on a phone, uncommitted
 - Mini player on every screen while playing or paused (tap opens the Playing screen), customizable bottom bar (default Library, Playlists, Search, Rooms; Customize bottom bar is in the three-dot menu), Rooms destination, places kept across tab switches and Back, message when Shuffle starts.
 - Unverified: all of it on a phone; library artwork (see above).

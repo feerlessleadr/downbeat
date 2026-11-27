@@ -14,6 +14,9 @@ import kotlinx.coroutines.delay
 class PlaybackController(private val repo: MusicRepository) {
 
     suspend fun playPause(leader: Player): String? = run { it.playPause(leader.playerId) }
+    /** Pause and resume that do nothing if the room is already in that state (used by the lock screen controls). */
+    suspend fun pause(leader: Player): String? = run { it.pause(leader.playerId) }
+    suspend fun resume(leader: Player): String? = run { it.resume(leader.playerId) }
     suspend fun stop(leader: Player): String? = run { it.stop(leader.playerId) }.also { if (it == null) repo.refreshQueueNow(leader.playerId) }
     suspend fun next(leader: Player): String? = run { it.next(leader.playerId) }
     suspend fun previous(leader: Player): String? = run { it.previous(leader.playerId) }

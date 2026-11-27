@@ -52,7 +52,10 @@ fun nowPlaying(leader: Player, queue: PlayerQueue?, nowEpochSeconds: Double): No
     val duration = media?.duration ?: item?.duration
     val playing = leader.playbackState == "playing"
     // The queue is the reference (the web UI uses it). A player's own clock can restart from zero after a seek.
-    val useQueue = queue?.elapsedTime != null
+    // Right after a skip the player reports the new song a moment before the queue does; a queue that still describes the
+    // old song is ignored, otherwise the bar would show the old position and then jump back to the start.
+    val queueMatches = item?.queueItemId.isNullOrEmpty() || media?.queueItemId.isNullOrEmpty() || item?.queueItemId == media?.queueItemId
+    val useQueue = queue?.elapsedTime != null && queueMatches
     val elapsed = (if (useQueue) queue?.elapsedTime else leader.elapsedTime) ?: 0.0
     val stamp = if (useQueue) queue?.elapsedTimeLastUpdated else leader.elapsedTime?.let { leader.elapsedTimeLastUpdated }
     val live = if (playing && stamp != null) elapsed + (nowEpochSeconds - stamp).coerceAtLeast(0.0) else elapsed

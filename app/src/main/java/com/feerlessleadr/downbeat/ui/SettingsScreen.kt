@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,7 +30,12 @@ import com.feerlessleadr.downbeat.R
  * M6 and M7) will get entries here, for admin users only.
  */
 @Composable
-fun SettingsScreen(actions: AppMenuActions, serverUrl: String?) {
+fun SettingsScreen(
+    actions: AppMenuActions,
+    serverUrl: String?,
+    mediaControls: Boolean,
+    onMediaControls: (Boolean) -> Unit,
+) {
     var confirmSignOut by remember { mutableStateOf(false) }
     if (confirmSignOut) {
         AlertDialog(
@@ -49,6 +55,21 @@ fun SettingsScreen(actions: AppMenuActions, serverUrl: String?) {
         SettingsRow("Bottom bar", "Choose the buttons and their order", R.drawable.ic_nav_library, actions.onCustomizeBar)
         HorizontalDivider()
         SettingsRow("Rooms", "Choose which rooms are shown", R.drawable.ic_speaker, actions.onChooseRooms)
+        HorizontalDivider()
+        Row(
+            Modifier.fillMaxWidth().clickable { onMediaControls(!mediaControls) }.padding(horizontal = 24.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(painterResource(R.drawable.ic_play), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.weight(1f).padding(start = 16.dp)) {
+                Text("Lock screen controls", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Show what is playing, with play, pause and skip buttons, on the lock screen and in the notification shade",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(checked = mediaControls, onCheckedChange = onMediaControls, modifier = Modifier.padding(start = 12.dp))
+        }
         HorizontalDivider()
         SettingsRow("Sign out", "Forget this phone and remove its access on the server", R.drawable.ic_power) { confirmSignOut = true }
         HorizontalDivider()

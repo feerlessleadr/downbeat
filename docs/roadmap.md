@@ -34,7 +34,7 @@ Still to verify by the owner: tick/untick grouping, per-room volume, switching w
 - Queue page from a "Queue" row on the Playing screen: the songs with the current one marked, tap to jump, menu per row (Move up, Move down, Remove), Clear queue with a confirmation.
 - Later, maybe: drag to reorder and swipe to remove.
 
-## M5. Lock screen and notification controls
+## M5. Lock screen and notification controls (built 2026-11-27, awaiting the owner's phone test)
 - A media notification and lock-screen controls (play/pause, next, previous, seek, title, artist, artwork) for the room currently selected, using an Android media session that mirrors Music Assistant's state (the phone is a remote, not a player).
 - Needs a foreground service of type media playback while a room plays, and the notification permission on Android 13+ (asked in context, not at launch).
 - The service keeps the server connection alive in the background only while something plays; it stops when playback stops or the user dismisses it, so idle battery use stays near zero.
