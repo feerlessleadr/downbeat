@@ -82,3 +82,10 @@
 - **Decision**: Position uses the queue's `elapsed_time` and `elapsed_time_last_updated` when present, else the player's. After a seek the queue is re-read at 1 s and 3 s. The repository re-reads the queue of every playing room every 10 s (`queuePollMs`). The screen keeps the dropped position for 5 s after a release.
 - **Rationale**: Matches the web UI and cannot drift for long even without queue events.
 - **Impact**: `NowPlaying.kt`, `PlaybackController.kt`, `MusicRepository.kt`, `PlayingScreen.kt`. If the bar is still wrong after this, capture the player and queue elapsed fields after a seek.
+
+### 2026-11-27, Add provider setup, server admin and lock screen controls to v1
+- **Context**: Owner asked to bring these three items into v1 (they were listed as not in v1 in `docs/design.md` and `CLAUDE.md`).
+- **Options considered**: Put them in one late milestone; or split by risk. Show them to everyone; or only to admin users.
+- **Decision**: Three milestones after the queue: M5 lock screen and notification controls (media session mirroring the server, foreground service only while playing), M6 provider setup, M7 server admin. M6 and M7 live behind Settings and show only for admin users. Polish becomes M8, release M9. Phone as a player, permanent group creation and library editing stay out.
+- **Rationale**: Lock screen controls are used daily so they come first; provider and admin screens are rare and risky (dynamic config forms, destructive actions) so they need a read-only API sample run before any code and must not clutter the everyday screens.
+- **Impact**: `docs/roadmap.md`, `docs/design.md`, `CLAUDE.md`, `STATUS.md`. Needs new manifest entries in M5 (foreground service, notification permission). The "Never print or store keys" and "Claude never handles tokens" rules still apply to the M6 and M7 sample runs.

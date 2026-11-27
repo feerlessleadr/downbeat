@@ -1,6 +1,6 @@
 # STATUS (2026-11-26)
 
-**Phase:** The Playing screen and rooms sheet are on the owner's phone in testing. Round 1 (2026-11-27) worked: now-playing info, play/pause, repeat, volume, room chip and sheet opening. Fixed after round 1 (rebuilt, not yet retested): TV as default room, missing next/previous, seek not draggable, shuffle icon not updating, slow reconnect after screen off. Group tick/untick, per-room volume, room switching and mixed groups are still untested (owner will report later). Security baseline pushed in `3bd8fc8`; the Playing-screen code is still uncommitted.
+**Phase:** The Playing screen and rooms sheet are on the owner's phone in testing. Round 1 (2026-11-27) worked: now-playing info, play/pause, repeat, volume, room chip and sheet opening. Fixed after round 1 (rebuilt, not yet retested): TV as default room, missing next/previous, seek not draggable, shuffle icon not updating, slow reconnect after screen off. Group tick/untick, per-room volume, room switching and mixed groups are still untested (owner will report later). Round 2 verified by the owner: next/previous, seek (stays put, matches the web UI), shuffle, reconnect. Security baseline pushed in `3bd8fc8`; Playing screen pushed in `21051c9`.
 
 ## Verified on a real phone (owner, 2026-11-26)
 - Sign-in with password works (this also proves `POST /auth/login` and long-lived token creation), rooms show with sensible states, the app recovers after wifi off and on, and a volume change in the web UI shows in the app.
@@ -9,6 +9,9 @@
 - `data/RoomLogic.kt`: effective leader (a follower resolves to its leader, a member of a playing static group to the group), default room (playing, else first single room), ticked set, row states, and what a tap does (add to set, remove, switch). `data/NowPlaying.kt`: title, artist, album, artwork, live position, and which buttons the leader supports. `data/PlaybackController.kt`: turns taps and buttons into server commands and returns a message on failure. Saved room choice in `data/AppPrefs.kt`.
 - `ui/PlayingScreen.kt` (room chip, artwork, seek bar, shuffle, previous, play/pause, next, repeat, one volume slider), `ui/RoomsSheet.kt` ("Play in": tick rooms, volume per ticked room), `ui/AppRoot.kt` (three tabs; Library and Search are "coming next" placeholders), artwork loading with Coil (the token is sent only to the server's own host).
 - Tests: 84 pass, 4 skipped without the samples folder. New: `RoomLogicTest` (24), `PlaybackControllerTest` (10), `UiHelpersTest` (5).
+
+## Roadmap
+Full plan in `docs/roadmap.md`: M2 rooms power + first-run picker, M3 Library and Search, M4 queue, M5 lock screen controls, M6 provider setup, M7 server admin, M8 polish and settings, M9 release.
 
 ## Next action
 1. Owner: install the new debug build and try the Playing screen (checklist in the last message). Report what works and what doesn't.

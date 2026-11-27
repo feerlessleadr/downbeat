@@ -25,7 +25,7 @@ Goal: a sleek, simple Music Assistant remote. The official app's weakness is spe
 - Live updates: events `player_updated`, `queue_updated`, `queue_time_updated`; elapsed time is derived from `elapsed_time` + `elapsed_time_last_updated`, not polled.
 
 ## Not in v1
-Phone as a player, library management (add/remove, tagging), provider/server setup, permanent group creation, audiobooks and podcasts, Android Auto.
+Phone as a player, library management (add/remove, tagging), permanent group creation, audiobooks and podcasts, Android Auto. (Revised 2026-11-27: provider setup, server admin and lock screen controls are now in v1, see docs/roadmap.md M5 to M7. They sit behind Settings and show only to admin users, so the everyday screens stay unchanged.)
 
 ## Open design questions
 - Should "Play" ever ask "Play where?" or always use the current rooms? (Draft: always use current rooms; the chip is always visible.)

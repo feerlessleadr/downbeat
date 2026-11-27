@@ -4,7 +4,7 @@ Simple, sleek Android client (Kotlin + Jetpack Compose, Material 3) for a Music 
 
 - Read `STATUS.md` first. Search `DECISIONS.md` only when a past decision matters.
 - Design goal: fewer screens and fewer options than other Music Assistant apps. When in doubt, leave the feature out or hide it.
-- v1 scope: Now Playing + queue, browse + search library, multi-room / player groups. Not in v1: phone as a player, provider setup, server admin.
+- v1 scope: Now Playing + queue, browse + search library, multi-room / player groups. Provider setup, server admin (admin users only, behind Settings) and lock screen controls were added to v1 on 2026-11-27; plan in `docs/roadmap.md`. Not in v1: phone as a player, permanent group creation, library editing.
 - External dependency (not a workspace connection): the Music Assistant server, over its websocket/REST API. Other open-source Music Assistant apps may be read for ideas; copy no code unless the license allows it and the owner agrees.
 - Build (PowerShell): `$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'; .\gradlew.bat :app:testDebugUnitTest :app:assembleDebug`. `local.properties` (gitignored) holds `sdk.dir`. Package `com.feerlessleadr.downbeat` (debug builds add `.debug`). Stack versions are in `gradle/libs.versions.toml`, copied from dockge-for-android.
 - Docs: `docs/design.md` (approved 2026-11-26), `docs/music-assistant-api.md` plus `docs/music-assistant-api-verified.md` (the verified one wins), `tools/Sample-MusicAssistant.ps1` (owner runs it; Claude never handles tokens).
