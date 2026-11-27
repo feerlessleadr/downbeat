@@ -64,10 +64,12 @@ fun PlayingScreen(
     controller: PlaybackController,
     onError: (String) -> Unit,
     onSignOut: () -> Unit,
+    onChooseRooms: () -> Unit,
 ) {
     val state by repo.state.collectAsStateWithLifecycle()
     val selected by repo.selectedRoomId.collectAsStateWithLifecycle()
-    val leader = RoomLogic.effectiveLeader(state.players, selected)
+    val hidden by repo.hiddenRooms.collectAsStateWithLifecycle()
+    val leader = RoomLogic.effectiveLeader(state.players, selected, hidden)
     var showRooms by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
 
@@ -78,6 +80,7 @@ fun PlayingScreen(
             Box {
                 IconButton(onClick = { menuOpen = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "More") }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(text = { Text("Choose rooms") }, onClick = { menuOpen = false; onChooseRooms() })
                     DropdownMenuItem(text = { Text("Sign out") }, onClick = { menuOpen = false; onSignOut() })
                 }
             }

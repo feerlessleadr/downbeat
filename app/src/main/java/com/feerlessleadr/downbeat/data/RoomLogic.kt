@@ -9,6 +9,10 @@ data class RoomRow(
     /** False when tapping would do nothing (unavailable, the only ticked room, or locked into a static group). */
     val enabled: Boolean,
     val subtitle: String,
+    /** True when the row shows a power button (the room lists the `power` feature and is reachable). */
+    val canPower: Boolean = false,
+    /** Power state; true when the server does not say. */
+    val powered: Boolean = true,
 )
 
 /** What a tap on a room does. The caller turns it into server commands. */
@@ -48,8 +52,8 @@ object RoomLogic {
      * playing static group resolves to that group, because their own queue is not the one that plays.
      * Falls back to the default room when the chosen one is missing, hidden or unavailable.
      */
-    fun effectiveLeader(players: List<Player>, selectedId: String?): Player? {
-        val rooms = visibleRooms(players)
+    fun effectiveLeader(players: List<Player>, selectedId: String?, hidden: Set<String> = emptySet()): Player? {
+        val rooms = visibleRooms(players, hidden)
         val byId = players.associateBy { it.playerId }
         val chosen = selectedId?.let { byId[it] }?.takeIf { it.available && it in rooms }
             ?: defaultSelection(rooms)?.let { byId[it] }
@@ -61,10 +65,10 @@ object RoomLogic {
     /** Ids of every room that is playing together with [leader], leader included. */
     fun currentSet(leader: Player): Set<String> = leader.groupMembers.toSet() + leader.playerId
 
-    fun rows(players: List<Player>, leader: Player): List<RoomRow> {
+    fun rows(players: List<Player>, leader: Player, hidden: Set<String> = emptySet()): List<RoomRow> {
         val set = currentSet(leader)
         val lockedByGroup = leader.type == "group"
-        return visibleRooms(players).map { room ->
+        return visibleRooms(players, hidden).map { room ->
             val ticked = room.playerId in set
             val enabled = room.available && !(ticked && (lockedByGroup || set.size == 1))
             val subtitle = when {
@@ -73,8 +77,30 @@ object RoomLogic {
                 ticked -> "Together with ${leader.name}"
                 else -> activity(room)
             }
-            RoomRow(room, ticked, enabled, subtitle)
+            // Off wins over the activity text: an off room is not playing anything.
+            val shown = if (room.available && room.powered == false) "Off" else subtitle
+            RoomRow(room, ticked, enabled, shown, canPower = canPower(room), powered = room.powered != false)
         }
+    }
+
+    /**
+     * What the first-run picker starts with unticked: single players that cannot pause (TVs, receivers: they only have
+     * volume controls on the owner's server). Speakers and static groups start ticked.
+     */
+    fun suggestedHidden(players: List<Player>): Set<String> =
+        visibleRooms(players).filter { it.type != "group" && !it.supports("pause") }.map { it.playerId }.toSet()
+
+    /** True when the room lists the `power` feature and is reachable. */
+    fun canPower(room: Player): Boolean = room.available && room.supports("power")
+
+    /**
+     * The rooms to switch off for "Turn everything off": every room the person can see that can power and is on. A
+     * static group counts once; its members are skipped because switching the group off covers them.
+     */
+    fun powerOffTargets(players: List<Player>, hidden: Set<String> = emptySet()): List<String> {
+        val on = visibleRooms(players, hidden).filter { canPower(it) && it.powered != false }
+        val coveredByGroup = on.filter { it.type == "group" }.flatMap { it.staticGroupMembers + it.groupMembers }.toSet()
+        return on.filter { it.playerId !in coveredByGroup }.map { it.playerId }
     }
 
     fun actionFor(players: List<Player>, leader: Player, tappedId: String): RoomAction {

@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,6 +50,17 @@ private val TABS = listOf(
 
 @Composable
 private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) {
+    val state by repo.state.collectAsStateWithLifecycle()
+    val configured by repo.roomsConfigured.collectAsStateWithLifecycle()
+    var showPicker by rememberSaveable { mutableStateOf(false) }
+    // First run: once the rooms are known, ask which ones to show (before anything else).
+    val firstRun = !configured && state.players.isNotEmpty()
+    if (firstRun || showPicker) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+            RoomPickerScreen(repo, firstRun = firstRun, onDone = { showPicker = false })
+        }
+        return
+    }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -72,7 +84,11 @@ private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) 
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             when (tab) {
-                0 -> PlayingScreen(repo, controller, onError = onError, onSignOut = { repo.signOut() })
+                0 -> PlayingScreen(
+                    repo, controller, onError = onError,
+                    onSignOut = { scope.launch { repo.signOutAndRevoke() } },
+                    onChooseRooms = { showPicker = true },
+                )
                 1 -> ComingSoon("Library", "Browse albums, artists, playlists and radio. Coming next.")
                 else -> ComingSoon("Search", "Search your whole library. Coming next.")
             }

@@ -21,11 +21,16 @@ class MaApi(private val client: MaClient) {
 
     // ---- Account -----------------------------------------------------------------------------------------
 
-    /** Makes a long-lived token (the server says: valid for 1 year, not renewed by use). The result is the token. */
+    /** Makes a long-lived token (the server's token screen says 10 years, not renewed by use). The result is the token. */
     suspend fun createLongLivedToken(name: String): String {
         val result = client.call("auth/token/create", args { put("name", name) })
         return (result as? JsonPrimitive)?.content ?: throw MaException(null, "No token in the server's answer")
     }
+
+    /** The signed-in user's tokens (arguments checked against commands.json 2.10.13). */
+    suspend fun tokens(): List<AuthToken> = list(AuthToken.serializer(), "auth/tokens")
+
+    suspend fun revokeToken(tokenId: String) = run("auth/token/revoke", args { put("token_id", tokenId) })
 
     // ---- Players and queues ------------------------------------------------------------------------------
 

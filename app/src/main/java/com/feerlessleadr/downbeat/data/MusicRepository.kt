@@ -101,6 +101,23 @@ class MusicRepository(
         prefs.lastRoomId = id
     }
 
+    private val _hiddenRooms = MutableStateFlow(prefs.hiddenRoomIds)
+
+    /** Rooms the person chose not to see (TVs and receivers by default after the first-run picker). */
+    val hiddenRooms: StateFlow<Set<String>> = _hiddenRooms.asStateFlow()
+
+    private val _roomsConfigured = MutableStateFlow(prefs.roomsConfigured)
+
+    /** False until the person has been through the room picker once. */
+    val roomsConfigured: StateFlow<Boolean> = _roomsConfigured.asStateFlow()
+
+    fun setHiddenRooms(ids: Set<String>) {
+        prefs.hiddenRoomIds = ids
+        prefs.roomsConfigured = true
+        _hiddenRooms.value = ids
+        _roomsConfigured.value = true
+    }
+
     @Volatile private var currentApi: MaApi? = null
 
     /** The command API of the live connection, or null while offline. */
@@ -133,9 +150,11 @@ class MusicRepository(
             LoginResult.InvalidCredentials -> return SignInResult.InvalidCredentials
             is LoginResult.Failed -> return SignInResult.Failed(r.message)
         }
-        // Swap the login token (renewed by use, 30 days) for a long-lived one (1 year) when the server allows it.
-        val token = createLongLivedOrNull(url, sessionToken) ?: sessionToken
-        val session = Session(url, token)
+        // Swap the login token (renewed by use, 30 days) for a long-lived one (years, not renewed) when the server allows it.
+        // A unique name per sign-in lets sign-out revoke exactly this install's token, not another phone's.
+        val name = "$tokenName ${java.util.UUID.randomUUID().toString().take(6)}"
+        val longLived = createLongLivedOrNull(url, sessionToken, name)
+        val session = Session(url, longLived ?: sessionToken, tokenName = if (longLived != null) name else null)
         store.save(session)
         connect(session)
         return SignInResult.Success
@@ -149,12 +168,33 @@ class MusicRepository(
         _state.value = RepoState(phase = Phase.SignedOut, message = message)
     }
 
-    private suspend fun createLongLivedOrNull(url: String, sessionToken: String): String? {
+    /**
+     * Signs out and, when the server is reachable, revokes this install's token there first (best effort, at most a few
+     * seconds). A session without a known token name (an older sign-in) is only forgotten on the phone.
+     */
+    suspend fun signOutAndRevoke() {
+        val name = currentSession?.tokenName
+        val api = currentApi
+        if (name != null && api != null) {
+            try {
+                withTimeoutOrNull(4_000) {
+                    api.tokens().filter { it.name == name }.forEach { api.revokeToken(it.tokenId) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Offline or refused: the token stays valid on the server until it expires or is deleted in its UI.
+            }
+        }
+        signOut()
+    }
+
+    private suspend fun createLongLivedOrNull(url: String, sessionToken: String, name: String): String? {
         val client = MaClient(http)
         return try {
             client.connect(url, sessionToken)
             val st = withTimeoutOrNull(15_000) { client.state.first { it !is MaState.Idle && it !is MaState.Connecting } }
-            if (st is MaState.Ready) MaApi(client).createLongLivedToken(tokenName) else null
+            if (st is MaState.Ready) MaApi(client).createLongLivedToken(name) else null
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

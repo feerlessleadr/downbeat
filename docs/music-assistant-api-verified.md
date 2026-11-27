@@ -27,6 +27,6 @@ Companion to `music-assistant-api.md` (research and unauthenticated probe). This
 ## Still NOT verified
 - `auth/login` (username/password) result shape.
 - Queue events (`queue_updated`, `queue_items_updated`, `queue_time_updated`) and their payloads.
-- Token expiry behavior in practice (docs say 1 year, no renewal).
+- Token expiry behavior in practice (the web UI's token screen says long-lived tokens expire after 10 years and do not renew; the API docs said 1 year).
 - Dynamic grouping (`set_members`) and `play_media` in practice: the runs were read-only.
 - Third-party client licenses (listing snippets only).

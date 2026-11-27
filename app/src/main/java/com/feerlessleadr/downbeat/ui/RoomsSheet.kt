@@ -12,6 +12,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.res.painterResource
+import com.feerlessleadr.downbeat.R
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
@@ -53,28 +58,36 @@ fun RoomsSheet(
     val scope = rememberCoroutineScope()
     // The leader can change after a tap (a switch), so resolve it again from live state on every pass.
     val selected by repo.selectedRoomId.collectAsStateWithLifecycle()
-    val liveLeader = RoomLogic.effectiveLeader(state.players, selected) ?: leader
-    val rows = RoomLogic.rows(state.players, liveLeader)
+    val hidden by repo.hiddenRooms.collectAsStateWithLifecycle()
+    val liveLeader = RoomLogic.effectiveLeader(state.players, selected, hidden) ?: leader
+    val rows = RoomLogic.rows(state.players, liveLeader, hidden)
+    val canPowerOffAll = RoomLogic.powerOffTargets(state.players, hidden).isNotEmpty()
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Text("Play in", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 24.dp))
         Spacer(Modifier.height(8.dp))
-        LazyColumn {
+        LazyColumn(Modifier.weight(1f, fill = false)) {
             items(rows, key = { it.player.playerId }) { row ->
                 RoomRowItem(
                     row = row,
                     onTap = { scope.launch { controller.tapRoom(liveLeader, row.player.playerId)?.let(onError) } },
                     onVolume = { level -> scope.launch { controller.setRoomVolume(row.player.playerId, level)?.let(onError) } },
+                    onPower = { scope.launch { controller.setRoomPower(row.player.playerId, !row.powered)?.let(onError) } },
                 )
                 HorizontalDivider()
             }
         }
-        Spacer(Modifier.height(24.dp))
+        TextButton(
+            onClick = { scope.launch { controller.powerOffAll()?.let(onError) } },
+            enabled = canPowerOffAll,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        ) { Text("Turn everything off") }
+        Spacer(Modifier.height(16.dp))
     }
 }
 
 @Composable
-private fun RoomRowItem(row: RoomRow, onTap: () -> Unit, onVolume: (Int) -> Unit) {
+private fun RoomRowItem(row: RoomRow, onTap: () -> Unit, onVolume: (Int) -> Unit, onPower: () -> Unit) {
     val room = row.player
     Column(
         Modifier.fillMaxWidth().clickable(enabled = row.enabled, onClick = onTap).padding(horizontal = 24.dp, vertical = 8.dp),
@@ -84,12 +97,21 @@ private fun RoomRowItem(row: RoomRow, onTap: () -> Unit, onVolume: (Int) -> Unit
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(
                     room.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    color = if (room.available) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (room.available && row.powered) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     row.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
+            }
+            if (row.canPower) {
+                IconButton(onClick = onPower) {
+                    Icon(
+                        painterResource(R.drawable.ic_power),
+                        contentDescription = if (row.powered) "Turn ${room.name} off" else "Turn ${room.name} on",
+                        tint = if (row.powered) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
         // A volume slider for each ticked room that can set its own volume (a static group's own slider sets the group).

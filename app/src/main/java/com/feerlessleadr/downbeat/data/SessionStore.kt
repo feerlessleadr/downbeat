@@ -14,7 +14,12 @@ import javax.crypto.spec.GCMParameterSpec
 
 /** What is needed to reconnect: the address the user typed and a Music Assistant access token. Never a password. */
 @Serializable
-data class Session(val serverUrl: String, val token: String)
+data class Session(
+    val serverUrl: String,
+    val token: String,
+    /** The name given to this install's long-lived token, so sign-out can revoke exactly that token. Null if unknown. */
+    val tokenName: String? = null,
+)
 
 interface SessionStore {
     fun load(): Session?

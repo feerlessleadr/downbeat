@@ -71,6 +71,43 @@ class MusicRepositoryTest {
         assertTrue(fake.received.any { it.first == "auth/token/create" })
     }
 
+    @Test fun signOutRevokesOnlyThisInstallsToken() = runBlocking {
+        fake.tokens.add("SESSION")
+        val store = MemoryStore()
+        val r = repo(store)
+        r.signIn(fake.url(), "kev", "secret")
+        r.await { it.phase == Phase.Online }
+        val name = store.session!!.tokenName!!
+        assertTrue(name.startsWith("Downbeat "))
+        // Another phone's token has the same prefix but a different name; it must stay.
+        fake.results["auth/tokens"] =
+            """[{"token_id":"mine","name":"$name","is_long_lived":true},{"token_id":"other","name":"Downbeat zzzzzz","is_long_lived":true}]"""
+        r.signOutAndRevoke()
+        val revoked = fake.received.filter { it.first == "auth/token/revoke" }.map { it.second!!["token_id"].toString().trim('"') }
+        assertEquals(listOf("mine"), revoked)
+        assertNull(store.session)
+        assertEquals(Phase.SignedOut, r.state.value.phase)
+    }
+
+    @Test fun signOutWithoutAKnownTokenNameStillSignsOutAndRevokesNothing() = runBlocking {
+        fake.tokens.add("good")
+        val store = MemoryStore(Session(fake.url(), "good"))
+        val r = repo(store)
+        r.start()
+        r.await { it.phase == Phase.Online }
+        r.signOutAndRevoke()
+        assertTrue(fake.received.none { it.first == "auth/token/revoke" })
+        assertNull(store.session)
+    }
+
+    @Test fun choosingRoomsIsRememberedAndHidesThem() = runBlocking {
+        val r = repo(MemoryStore())
+        assertTrue(!r.roomsConfigured.value)
+        r.setHiddenRooms(setOf("p2"))
+        assertTrue(r.roomsConfigured.value)
+        assertEquals(setOf("p2"), r.hiddenRooms.value)
+    }
+
     @Test fun signInFallsBackToSessionTokenWhenTokenCreationFails() = runBlocking {
         // The session token is not accepted for websocket auth here, so token creation cannot run.
         val store = MemoryStore()

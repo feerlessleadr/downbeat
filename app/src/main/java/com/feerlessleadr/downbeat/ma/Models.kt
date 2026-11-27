@@ -47,6 +47,14 @@ data class PlayerMedia(
     @SerialName("queue_item_id") val queueItemId: String? = null,
 )
 
+/** One access token of the signed-in user (`auth/tokens`). */
+@Serializable
+data class AuthToken(
+    @SerialName("token_id") val tokenId: String,
+    val name: String = "",
+    @SerialName("is_long_lived") val isLongLived: Boolean = false,
+)
+
 @Serializable
 data class Player(
     @SerialName("player_id") val playerId: String,

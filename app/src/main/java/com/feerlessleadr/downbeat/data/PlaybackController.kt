@@ -41,6 +41,18 @@ class PlaybackController(private val repo: MusicRepository) {
         else it.setVolume(leader.playerId, level)
     }
 
+    /** Switches one room (or a static group) on or off. Playing in an off room is expected to power it on (unverified). */
+    suspend fun setRoomPower(roomId: String, on: Boolean): String? = run { it.setPower(roomId, on) }
+
+    /** "Turn everything off": switches off every visible room that can power and is on. Keeps going after a failure. */
+    suspend fun powerOffAll(): String? {
+        var firstError: String? = null
+        for (id in RoomLogic.powerOffTargets(repo.state.value.players, repo.hiddenRooms.value)) {
+            setRoomPower(id, false)?.let { if (firstError == null) firstError = it }
+        }
+        return firstError
+    }
+
     suspend fun setRoomVolume(roomId: String, level: Int): String? = run { it.setVolume(roomId, level) }
 
     /** What the rooms sheet does when a row is tapped. */

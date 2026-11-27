@@ -166,6 +166,62 @@ class RoomLogicTest {
         assertEquals(RoomAction.None, RoomLogic.actionFor(listOf(kitchen, deck.copy(available = false)), kitchen, "Deck"))
     }
 
+    // ---- power, hidden rooms, first-run suggestion -----------------------------------------------------------
+
+    private fun withPower(p: Player, powered: Boolean?) = p.copy(supportedFeatures = p.supportedFeatures + "power", powered = powered)
+
+    @Test fun powerButtonShowsOnlyForRoomsThatListPowerAndAreReachable() {
+        val d = withPower(deck, true)
+        val rows = RoomLogic.rows(listOf(d, pool, withPower(kitchen, true).copy(available = false)), d)
+        assertTrue(rows.first { it.player.playerId == "Deck" }.canPower)
+        assertFalse(rows.first { it.player.playerId == "Pool" }.canPower)
+        assertFalse(rows.first { it.player.playerId == "Kitchen" }.canPower)
+    }
+
+    @Test fun anOffRoomSaysOffAndAnUnknownPowerStateCountsAsOn() {
+        val off = withPower(pool, false)
+        val unknown = withPower(kitchen, null)
+        val rows = RoomLogic.rows(listOf(deck, off, unknown), deck)
+        val poolRow = rows.first { it.player.playerId == "Pool" }
+        assertEquals("Off", poolRow.subtitle)
+        assertFalse(poolRow.powered)
+        assertTrue(rows.first { it.player.playerId == "Kitchen" }.powered)
+    }
+
+    @Test fun turnEverythingOffTargetsEveryVisibleRoomThatCanPowerAndIsOn() {
+        val players = listOf(withPower(deck, true), withPower(pool, true), withPower(kitchen, false), kitchenless(), tv)
+        // Kitchen is already off, "Plain" cannot power, the TV lists no power.
+        assertEquals(listOf("Deck", "Pool"), RoomLogic.powerOffTargets(players))
+    }
+
+    private fun kitchenless() = player("Plain")
+
+    @Test fun aStaticGroupCountsOnceAndItsMembersAreSkipped() {
+        val g = withPower(backyard, true).copy(staticGroupMembers = listOf("Deck", "Pool"))
+        val other = withPower(kitchen, true)
+        // Two separate groups or rooms on at once: both are switched off, not just the selected one.
+        assertEquals(
+            listOf("Backyard", "Kitchen"),
+            RoomLogic.powerOffTargets(listOf(g, withPower(deck, true), withPower(pool, true), other)),
+        )
+        assertEquals(emptyList<String>(), RoomLogic.powerOffTargets(listOf(g.copy(powered = false))))
+    }
+
+    @Test fun hiddenRoomsAreNotSwitchedOffByTurnEverythingOff() {
+        assertEquals(listOf("Pool"), RoomLogic.powerOffTargets(listOf(withPower(deck, true), withPower(pool, true)), setOf("Deck")))
+    }
+
+    @Test fun hiddenRoomsAreNotListedAndNeverChosenAsTheDefault() {
+        val players = listOf(deck, pool)
+        assertEquals(listOf("Pool"), RoomLogic.rows(players, pool, setOf("Deck")).map { it.player.playerId })
+        assertEquals("Pool", RoomLogic.effectiveLeader(players, "Deck", setOf("Deck"))?.playerId)
+        assertEquals("Pool", RoomLogic.effectiveLeader(players, null, setOf("Deck"))?.playerId)
+    }
+
+    @Test fun firstRunSuggestionHidesTvsButKeepsSpeakersAndGroups() {
+        assertEquals(setOf("TV"), RoomLogic.suggestedHidden(all))
+    }
+
     // ---- now playing and controls -------------------------------------------------------------------------
 
     @Test fun positionAdvancesWhilePlayingOnly() {

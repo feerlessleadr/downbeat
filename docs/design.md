@@ -14,7 +14,7 @@ Goal: a sleek, simple Music Assistant remote. The official app's weakness is spe
 3. **Library**: chips Albums, Artists, Playlists, Radio (Tracks reachable from search). Grid for albums/artists, list for others. Tapping an album/playlist/radio plays it in the current rooms (replacing the queue). Overflow on an item: Play next, Add to queue, Play in another room.
 4. **Search**: one box, results grouped (Artists, Albums, Tracks, Playlists, Radio); same tap and overflow behavior.
 5. **Settings** (from Playing's overflow): server address, sign in/out, theme, which rooms to hide.
-6. **Sign-in**: server address, username and password (builtin provider). The app logs in, creates a long-lived token (expires after 1 year) and stores only the token (encrypted storage). On expiry or 401 it asks to sign in again.
+6. **Sign-in**: server address, username and password (builtin provider). The app logs in, creates a long-lived token (the server's token screen says it expires after 10 years, seen 2026-11-27) and stores only the token (encrypted storage). On expiry or 401 it asks to sign in again.
 
 ## Mapping rooms onto the API (to verify with authenticated samples)
 - Current set = the leader player (`synced_to` null) plus `group_members`. Effective queue id: `player_queues/get_active_queue(player_id)`.

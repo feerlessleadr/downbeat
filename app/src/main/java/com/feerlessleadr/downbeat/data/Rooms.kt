@@ -10,9 +10,9 @@ private val ROOM_TYPES = setOf("player", "stereo_pair", "group")
  * (Verified shape: the owner's server has a hidden private web player that must never show up.)
  * Available rooms come first, each half sorted by name.
  */
-fun visibleRooms(players: List<Player>): List<Player> =
+fun visibleRooms(players: List<Player>, hiddenByUser: Set<String> = emptySet()): List<Player> =
     players
-        .filter { it.type in ROOM_TYPES && !it.hideInUi && !it.private && it.enabled }
+        .filter { it.type in ROOM_TYPES && !it.hideInUi && !it.private && it.enabled && it.playerId !in hiddenByUser }
         .sortedWith(compareBy({ !it.available }, { it.name.lowercase() }))
 
 /**

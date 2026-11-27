@@ -1,36 +1,38 @@
-# STATUS (2026-11-26)
+# STATUS (2026-11-27)
 
-**Phase:** The Playing screen and rooms sheet are on the owner's phone in testing. Round 1 (2026-11-27) worked: now-playing info, play/pause, repeat, volume, room chip and sheet opening. Fixed after round 1 (rebuilt, not yet retested): TV as default room, missing next/previous, seek not draggable, shuffle icon not updating, slow reconnect after screen off. Group tick/untick, per-room volume, room switching and mixed groups are still untested (owner will report later). Round 2 verified by the owner: next/previous, seek (stays put, matches the web UI), shuffle, reconnect. Security baseline pushed in `3bd8fc8`; Playing screen pushed in `21051c9`.
+**Phase:** M2 (rooms complete: power, first-run room picker, revoke token on sign-out) is built and unit-tested (96 tests, 4 skipped without the samples folder) but not yet tried on a phone, and not committed. M0 and M1 are pushed (last pushed commit `881bf07`, the roadmap). Plan: `docs/roadmap.md`.
 
-## Verified on a real phone (owner, 2026-11-26)
-- Sign-in with password works (this also proves `POST /auth/login` and long-lived token creation), rooms show with sensible states, the app recovers after wifi off and on, and a volume change in the web UI shows in the app.
+## Verified on a real phone (owner)
+- Sign-in, rooms display, reconnect (also after screen off and wifi off/on, almost immediately), live volume.
+- Now-playing info, artwork, play/pause, next/previous, seek (stays put, matches the web UI), shuffle and repeat icons, room chip and "Play in" sheet opening, volume slider.
 
-## Built, uncommitted
-- `data/RoomLogic.kt`: effective leader (a follower resolves to its leader, a member of a playing static group to the group), default room (playing, else first single room), ticked set, row states, and what a tap does (add to set, remove, switch). `data/NowPlaying.kt`: title, artist, album, artwork, live position, and which buttons the leader supports. `data/PlaybackController.kt`: turns taps and buttons into server commands and returns a message on failure. Saved room choice in `data/AppPrefs.kt`.
-- `ui/PlayingScreen.kt` (room chip, artwork, seek bar, shuffle, previous, play/pause, next, repeat, one volume slider), `ui/RoomsSheet.kt` ("Play in": tick rooms, volume per ticked room), `ui/AppRoot.kt` (three tabs; Library and Search are "coming next" placeholders), artwork loading with Coil (the token is sent only to the server's own host).
-- Tests: 84 pass, 4 skipped without the samples folder. New: `RoomLogicTest` (24), `PlaybackControllerTest` (10), `UiHelpersTest` (5).
+## Built, uncommitted (M2)
+- Power: a power button on each row of the "Play in" sheet (rooms that list `power` and are reachable, static groups included), "Off" shown and dimmed, and "Turn off everything playing here" at the bottom.
+- First-run room picker (TVs and receivers unticked by default), reachable later from the Playing menu "Choose rooms". Hidden rooms never show or become the default.
+- Sign-out revokes this install's server token (unique name per sign-in, stored in the encrypted session).
 
-## Roadmap
-Full plan in `docs/roadmap.md`: M2 rooms power + first-run picker, M3 Library and Search, M4 queue, M5 lock screen controls, M6 provider setup, M7 server admin, M8 polish and settings, M9 release.
+## M2 test results (owner, 2026-11-27)
+- Works: room picker with TVs unticked, hidden rooms, "Choose rooms" menu, power buttons (backyard, inside, dobson speakers), switching a room off and on.
+- Rooms without `power` in their features (Deck, Pool groups) show no button, as designed.
+- Fixed after the test (rebuilt, not retested): "Turn everything off" now covers every visible room that is on (it skipped a second group before).
+- Sign-out revoke not yet seen working: the owner's session predates token names. Retest after signing out and in once.
 
 ## Next action
-1. Owner: install the new debug build and try the Playing screen (checklist in the last message). Report what works and what doesn't.
+1. Owner: install the build and test M2 (checklist in the last message).
 2. Commit and push when the owner says so.
-3. Library and Search tabs (browse, search, tap to play in the current rooms, Play next / Add to queue menu), then the queue view, first-run room picker (TVs off by default) and settings.
+3. M3 Library and Search, then M4 queue, M5 lock screen controls, M6 provider setup, M7 server admin, M8 polish and settings, M9 release.
 
 ## Open questions
-- TVs hidden by default with opt-in at first run (proposed in the design; confirm).
 - Palette and real icon (placeholders in use).
-- CI workflows (pull request build, signed release) not copied from dockge-for-android yet.
-- Sign-out does not revoke the Downbeat token on the server.
+- CI workflows not copied from dockge-for-android yet (M9).
+- Does playing into a powered-off room switch it on by itself? (Assumed from the server's set_members docs; verify.)
 
 ## Not yet verified
-- Every playback-changing command on the real server: play/pause, next, previous, seek, shuffle, repeat, volume, group volume, `set_members` (tick/untick), `transfer` (switch while playing). None has been sent yet.
-- Artwork: whether `/imageproxy` needs the token (the app sends it to the server's host) and whether the Bearer scheme is right.
-- Queue events (the app re-reads a queue when a player's state or item changes, and relies on that).
-- Removing the leader of a sync set is deliberately not offered; behaviour of `set_members` when members are Chromecast and WiiM mixed is unknown.
+- Power on/off (single room, static group, "turn off everything"), token revoke on sign-out, the first-run picker flow.
+- Group tick/untick (`set_members`), per-room volume, switching rooms while playing (`transfer`), mixed Chromecast and WiiM groups: owner will report.
+- Queue events (the app re-reads queues after commands, every 10 s while playing, and on player changes).
 - `MediaItem` and search decoding against real data; token expiry in practice.
 
 ## Owner manual steps
-- Install the new debug build over the old one (same command as before) and test.
-- In the Music Assistant web UI, delete the token `downbeat-probe-2` if you created it, and the token named `Downbeat` once you stop testing (sign-out does not revoke it).
+- Install the new debug build over the old one and test.
+- In the Music Assistant web UI, delete the old token named exactly `Downbeat` (created before token names became unique) and the token `downbeat-probe-2` if you made it. Tokens named `Downbeat xxxxxx` are removed by sign-out.
