@@ -85,5 +85,6 @@
 - Slice 3 (settings form) pushed as `a3cebf5` and confirmed on the phone.
 - Slice 4 (add a provider) pushed as `e38b964`; M6 is done pending the owner's own tests of adding a real provider.
 
-## M7 server admin: slice 1 built (186 tests pass, not yet tried on a phone, uncommitted)
+## M7 server admin: slice 1 pushed as `c387e3f` and confirmed on the phone; slice 2 (actions) built, 192 tests pass, not yet tried on a phone, uncommitted
 - Research in `docs/server-admin-research.md`. Settings now has a "Server" row (administrators) showing: this server, background tasks, users, access tokens (this phone marked) and the log on demand. Read-only. To verify on the phone: each section against the web UI, and what any section says if it cannot be read.
+- Slice 2: tap a task (Run now, Stop, Retry, schedule on or off, Show its log), "Sync all libraries", "Clear finished", tap a token to revoke it (box warns for this phone's own), "Share these lines" for the log. To verify: Show its log, Clear finished, the revoke box then Cancel; Run now and Sync all libraries start real work.

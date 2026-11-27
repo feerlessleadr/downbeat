@@ -327,4 +327,6 @@ data class BackgroundTask(
     @SerialName("failure_count") val failureCount: Int = 0,
     @SerialName("allow_retry") val allowRetry: Boolean = false,
     @SerialName("allow_cancel") val allowCancel: Boolean = false,
+    /** The recurring schedule, if the task has one (its shape is not read; only whether it exists matters). */
+    val schedule: kotlinx.serialization.json.JsonElement? = null,
 )

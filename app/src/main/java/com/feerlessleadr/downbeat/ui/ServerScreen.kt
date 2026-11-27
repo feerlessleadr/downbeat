@@ -1,11 +1,22 @@
 package com.feerlessleadr.downbeat.ui
 
 import androidx.activity.compose.BackHandler
+import android.content.Intent
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import com.feerlessleadr.downbeat.R
+import com.feerlessleadr.downbeat.data.ServerController
+import com.feerlessleadr.downbeat.data.TextResult
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -92,6 +103,29 @@ fun ServerScreen(repo: MusicRepository, onBack: () -> Unit) {
     var log by remember { mutableStateOf<String?>(null) }
     var logLoading by remember { mutableStateOf(false) }
     var logError by remember { mutableStateOf<String?>(null) }
+    val controller = remember(repo) { ServerController(repo) }
+    val context = LocalContext.current
+    var message by remember { mutableStateOf<String?>(null) }
+    var acting by remember { mutableStateOf(false) }
+    var selectedTask by remember { mutableStateOf<BackgroundTask?>(null) }
+    var taskLog by remember { mutableStateOf<String?>(null) }
+    var selectedToken by remember { mutableStateOf<AuthToken?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
+
+    /** Runs one admin action, says what happened, and reads everything back shortly after. */
+    fun act(success: String, call: suspend () -> String?) {
+        scope.launch {
+            acting = true
+            message = null
+            val failure = call()
+            message = failure ?: success
+            acting = false
+            if (failure == null) {
+                delay(800)
+                refresh++
+            }
+        }
+    }
 
     LaunchedEffect(refresh) {
         val api = repo.api
@@ -108,7 +142,10 @@ fun ServerScreen(repo: MusicRepository, onBack: () -> Unit) {
             Text("Server", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
             TextButton(onClick = { refresh++ }, enabled = !busy) { Text("Refresh") }
         }
-        if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (busy || acting) LinearProgressIndicator(Modifier.fillMaxWidth())
+        message?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp))
+        }
 
         LazyColumn(Modifier.fillMaxSize()) {
             // About
@@ -126,12 +163,27 @@ fun ServerScreen(repo: MusicRepository, onBack: () -> Unit) {
             // Tasks
             item { SectionTitle("Background tasks" + (tasks.value?.let { " (${it.size})" } ?: "")) }
             item {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+                    Text(
+                        "Tap a task to run it, stop it, retry it, switch its schedule or read its log.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
+                        OutlinedButton(onClick = { act("Library sync started. It runs in the background.") { controller.syncAllLibraries() } }, enabled = !acting) { Text("Sync all libraries") }
+                        OutlinedButton(onClick = { confirmClear = true }, enabled = !acting) { Text("Clear finished") }
+                    }
+                }
+            }
+            item {
                 Part(tasks, emptyText = "No tasks.") { list ->
                     list.forEach { t ->
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
-                            Text(t.name.ifBlank { t.id }, style = MaterialTheme.typography.titleSmall)
-                            Text(taskSummary(t), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            taskError(t)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                        Row(Modifier.fillMaxWidth().clickable { selectedTask = t }.padding(horizontal = 24.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(t.name.ifBlank { t.id }, style = MaterialTheme.typography.titleSmall)
+                                Text(taskSummary(t), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                taskError(t)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                            }
+                            Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         HorizontalDivider()
                     }
@@ -161,9 +213,16 @@ fun ServerScreen(repo: MusicRepository, onBack: () -> Unit) {
             // Tokens
             item { SectionTitle("Access tokens" + (tokens.value?.let { " (${it.size})" } ?: "")) }
             item {
+                Text(
+                    "Tap a token to revoke it. Whoever uses it is signed out.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
+            }
+            item {
                 Part(tokens, emptyText = "No tokens.") { list ->
                     list.sortedWith(compareByDescending<AuthToken> { isThisPhone(it, repo.thisTokenName) }.thenBy { it.name.lowercase() }).forEach { t ->
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
+                        Column(Modifier.fillMaxWidth().clickable { selectedToken = t }.padding(horizontal = 24.dp, vertical = 8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(t.name.ifBlank { "Unnamed" }, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                                 if (isThisPhone(t, repo.thisTokenName)) {
@@ -202,6 +261,12 @@ fun ServerScreen(repo: MusicRepository, onBack: () -> Unit) {
                         },
                         enabled = !logLoading,
                     ) { Text(if (log == null) "Show the latest log lines" else "Reload the log") }
+                    log?.let { text ->
+                        TextButton(onClick = {
+                            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+                            context.startActivity(Intent.createChooser(send, "Share the log").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }) { Text("Share these lines") }
+                    }
                     if (logLoading) CircularProgressIndicator(Modifier.padding(top = 12.dp))
                     logError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
                     log?.let { text ->
@@ -217,6 +282,77 @@ fun ServerScreen(repo: MusicRepository, onBack: () -> Unit) {
             }
             item { Column(Modifier.padding(bottom = 32.dp)) {} }
         }
+
+    // ---- Dialogs ----
+    selectedTask?.let { t ->
+        val canSwitchSchedule = t.schedule != null && t.schedule !is kotlinx.serialization.json.JsonNull
+        AlertDialog(
+            onDismissRequest = { selectedTask = null; taskLog = null },
+            title = { Text(t.name.ifBlank { t.id }) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(taskSummary(t), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    taskError(t)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 6.dp)) }
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = { selectedTask = null; act("Queued to run next.") { controller.runTask(t.id) } }) { Text("Run now") }
+                    if (t.allowCancel) TextButton(onClick = { selectedTask = null; act("Stopping it.") { controller.cancelTask(t.id) } }) { Text("Stop") }
+                    if (t.allowRetry) TextButton(onClick = { selectedTask = null; act("Retrying.") { controller.retryTask(t.id) } }) { Text("Retry") }
+                    if (canSwitchSchedule) {
+                        TextButton(onClick = { selectedTask = null; act("Automatic runs turned on.") { controller.setTaskEnabled(t.id, true) } }) { Text("Turn automatic runs on") }
+                        TextButton(onClick = { selectedTask = null; act("Automatic runs turned off.") { controller.setTaskEnabled(t.id, false) } }) { Text("Turn automatic runs off") }
+                    }
+                    TextButton(onClick = {
+                        scope.launch {
+                            taskLog = when (val r = controller.taskLog(t.id)) {
+                                is TextResult.Text -> logTail(r.text).ifBlank { "This task has no log." }
+                                is TextResult.Failed -> r.message
+                            }
+                        }
+                    }) { Text("Show its log") }
+                    taskLog?.let {
+                        SelectionContainer {
+                            Text(
+                                it, fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 14.sp,
+                                modifier = Modifier.padding(top = 8.dp).heightIn(max = 240.dp).verticalScroll(rememberScrollState()),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { selectedTask = null; taskLog = null }) { Text("Close") } },
+        )
+    }
+
+    selectedToken?.let { t ->
+        val mine = isThisPhone(t, repo.thisTokenName)
+        AlertDialog(
+            onDismissRequest = { selectedToken = null },
+            title = { Text("Revoke ${t.name.ifBlank { "this token" }}?") },
+            text = {
+                Text(
+                    if (mine) "This is the token this phone uses. Revoking it signs this phone out of Downbeat, and you will need your password to sign in again."
+                    else "Whoever uses this token is signed out and must sign in again. This cannot be undone.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    selectedToken = null
+                    act("Revoked.") { controller.revokeToken(t.tokenId) }
+                }) { Text("Revoke", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { selectedToken = null }) { Text("Cancel") } },
+        )
+    }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text("Clear finished tasks?") },
+            text = { Text("This removes finished tasks from the list. Tasks that run on a schedule stay.") },
+            confirmButton = { TextButton(onClick = { confirmClear = false; act("Cleared.") { controller.clearFinishedTasks() } }) { Text("Clear") } },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel") } },
+        )
+    }
     }
 }
 

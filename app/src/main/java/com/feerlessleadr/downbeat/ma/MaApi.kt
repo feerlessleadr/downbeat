@@ -238,6 +238,27 @@ class MaApi(private val client: MaClient) {
 
     suspend fun backgroundTasks(): List<BackgroundTask> = list(BackgroundTask.serializer(), "tasks/list")
 
+    /** Queues a task to run next. */
+    suspend fun runTask(taskId: String) = run("tasks/run", args { put("task_id", taskId) })
+
+    suspend fun cancelTask(taskId: String) = run("tasks/cancel", args { put("task_id", taskId) })
+
+    suspend fun retryTask(taskId: String) = run("tasks/retry", args { put("task_id", taskId) })
+
+    /** Removes finished tasks (not scheduled ones) from the history. */
+    suspend fun clearFinishedTasks() = run("tasks/clear_finished")
+
+    /** Switches the automatic schedule of a recurring task on or off. */
+    suspend fun setTaskEnabled(taskId: String, enabled: Boolean) =
+        run("tasks/set_enabled", args { put("task_id", taskId); put("enabled", enabled) })
+
+    /** The log text of one task. */
+    suspend fun taskLog(taskId: String): String =
+        (client.call("tasks/log", args { put("task_id", taskId) }) as? JsonPrimitive)?.content.orEmpty()
+
+    /** Starts a sync of every music provider's library (no filters). */
+    suspend fun syncAllLibraries() = run("music/sync")
+
     /** The application log as text (can be large). */
     suspend fun serverLog(): String = (client.call("logging/get") as? JsonPrimitive)?.content.orEmpty()
 
