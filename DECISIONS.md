@@ -30,3 +30,15 @@
 - **Decision**: Copied the build conventions from dockge-for-android (wrapper, AGP, Kotlin, Compose BOM, minSdk 26, JVM 17, release signing from environment only, debug-signed release blocked). Left out Socket.IO and Navigation for now (Music Assistant uses a plain websocket; navigation is three tabs and can be added when needed). Cleartext traffic is off in the manifest, so the app needs an HTTPS server address.
 - **Rationale**: Known-good tooling; fewer dependencies until they are needed.
 - **Impact**: New Gradle project in `C:\dev\downbeat`; builds. CI workflows and a real icon still to do.
+
+### 2026-11-26, Connection layer design
+- **Context**: First real code: the Music Assistant websocket client.
+- **Decision**: One single-use `MaClient` per session (reconnect = new client, decided by the caller). Models keep enums as strings and give every field a default so a newer server cannot break parsing. Event data stays raw JSON until payload shapes are verified. The client accepts several error-field names because the real error reply has not been captured. Auth rejection is a separate state (`AuthFailed`) from a dropped connection so the UI can ask for a new sign-in instead of retrying forever. Server URL is turned into `<typed address>/ws` and OkHttp upgrades it, so https stays https.
+- **Rationale**: Unverified parts of the protocol are isolated and tolerant; tests use a scripted fake server shaped like the verified protocol.
+- **Impact**: `app/.../ma/` and its tests; sample script extended to capture the missing facts.
+
+### 2026-11-26, Real-sample tests and null results
+- **Context**: Second sample run showed `error_code` is numeric, unknown player ids give `result: null` instead of an error, token creation returns a plain string, and only `player_updated` events were captured.
+- **Decision**: Keep error codes as strings in `MaException` (numeric codes are converted). Treat a null result as a normal answer ("not found"), not an exception. Added `RealSamplesTest`, which decodes the owner's local sample files when `DOWNBEAT_SAMPLES` is set and skips otherwise, so real data never enters the repo. Until queue events are seen, the app re-reads the affected queue after player events.
+- **Rationale**: Tests against real shapes catch model drift without committing device data.
+- **Impact**: `MaClientTest` (two new tests), `RealSamplesTest`, docs.

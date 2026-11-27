@@ -17,7 +17,16 @@ Companion to `music-assistant-api.md` (research and unauthenticated probe). This
 - **Server-side user preferences** (`user.preferences`) hold `activePlayerId` and `recentlySelectedPlayerIds`, written by the official apps. Downbeat may read them as a hint for the default room but must not depend on or overwrite them.
 - **Sizes**: `players/all` 151 KB and `player_queues/all` 80 KB here. Fetch once, then use events; do not poll.
 
+## Second run (2026-11-26): errors, token creation, events
+- **Error reply**: `{"message_id":"8","error_code":12,"details":"Invalid or unsupported command."}`. `error_code` is a **number**, the text is in `details`. No `result` key.
+- **Not every bad request is an error**: `players/get` with an unknown player id returned `{"message_id":"9","result":null,"partial":false}`. Callers must treat a null result as "not found".
+- **`auth/token/create(name)`**: result is the token as a **plain string** (`{"message_id":"10","result":"<token>","partial":false}`).
+- **Events**: `{"event":"player_updated","object_id":"<player id>","data":{<a full Player object>}}`. `object_id` equals `data.player_id`. Both events captured in the 25-second window were `player_updated` (from volume and play/pause changes); no `queue_updated` or `queue_time_updated` was captured (the script saves only the first two events per name, and the owner's actions may not have produced any). The app should therefore re-read the queue after player events instead of relying on queue events until those are seen.
+- The `Player`, `PlayerQueue` models decode all 18 real players, all 18 real queues and the real events (unit test `RealSamplesTest`, which reads a local samples folder and is skipped without it).
+
 ## Still NOT verified
-- `auth/login` (username/password) and `auth/token/create` result shapes; error replies; event payloads (the script skipped events); token expiry in practice.
-- Dynamic grouping (`set_members`) and `play_media` in practice: the run was read-only.
+- `auth/login` (username/password) result shape.
+- Queue events (`queue_updated`, `queue_items_updated`, `queue_time_updated`) and their payloads.
+- Token expiry behavior in practice (docs say 1 year, no renewal).
+- Dynamic grouping (`set_members`) and `play_media` in practice: the runs were read-only.
 - Third-party client licenses (listing snippets only).

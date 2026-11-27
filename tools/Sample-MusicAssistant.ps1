@@ -77,5 +77,44 @@ foreach ($k in $samples.Keys) {
   Set-Content "$out\$k.json" (Redact ($r | ConvertTo-Json -Depth 12))
   "{0}: {1}" -f $k, $(if ($r.error_code) { "ERROR $($r.error_code)" } else { 'ok' })
 }
+
+# Error reply shape: ask for a command that does not exist, and for a player that does not exist.
+$e1 = Send-Cmd 'downbeat/not_a_command' $null
+Set-Content "$out\20-error-unknown-command.json" (Redact ($e1 | ConvertTo-Json -Depth 6))
+$e2 = Send-Cmd 'players/get' @{ player_id = 'does-not-exist' }
+Set-Content "$out\21-error-unknown-player.json" (Redact ($e2 | ConvertTo-Json -Depth 6))
+
+# Optional: create a long-lived token to see the result shape. Only the shape is saved (token value redacted).
+if ($env:MA_MAKE_TOKEN -eq '1') {
+  $t = Send-Cmd 'auth/token/create' @{ name = 'downbeat-probe-2' }
+  $shape = ($t | ConvertTo-Json -Depth 6) -replace '"result":\s*"[^"]*"', '"result": "REDACTED-TOKEN-STRING"'
+  Set-Content "$out\22-token-create-shape.json" (Redact $shape)
+  "22-token-create-shape: saved. Revoke 'downbeat-probe-2' in the Music Assistant UI afterwards."
+}
+
+# Events: listen for 25 seconds. Press play/pause or change volume on a speaker meanwhile (use any other app).
+"Listening for events for 25 seconds. Change a volume or pause/play something now..."
+$events = New-Object System.Collections.ArrayList
+$deadline = (Get-Date).AddSeconds(25)
+$buf = New-Object byte[] 262144
+$sb = New-Object Text.StringBuilder
+$task = $null
+while ((Get-Date) -lt $deadline) {
+  if (-not $task) {
+    $seg = New-Object ArraySegment[byte] -ArgumentList (,$buf)
+    $task = $ws.ReceiveAsync($seg, [Threading.CancellationToken]::None)
+  }
+  if ($task.Wait(500)) {
+    $r = $task.Result; $task = $null
+    [void]$sb.Append([Text.Encoding]::UTF8.GetString($buf, 0, $r.Count))
+    if ($r.EndOfMessage) { [void]$events.Add($sb.ToString()); [void]$sb.Clear() }
+  }
+}
+$names = @(); foreach ($ev in $events) { try { $names += ($ev | ConvertFrom-Json).event } catch {} }
+"Event names seen: " + (($names | Group-Object | ForEach-Object { "$($_.Name) x$($_.Count)" }) -join ', ')
+# Save at most the first 2 of each event name (events can be large).
+$kept = @{}; $lines = @()
+foreach ($ev in $events) { try { $n = ($ev | ConvertFrom-Json).event } catch { $n = '?' }; if ($kept[$n] -lt 2) { $kept[$n]++; $lines += $ev } }
+Set-Content "$out\30-events.jsonl" (Redact ($lines -join "`n"))
 $ws.Dispose()
 "Saved to $out. Tell Claude when done; check the files for anything personal first."
