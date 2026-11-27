@@ -105,6 +105,10 @@ class ConfigFormState(
 
     fun hasChanges(): Boolean = entries.any { isChanged(it) }
 
+    /** Every editable, visible field that has a value: what a setup form step sends (a new provider has no earlier values). */
+    fun submitValues(): Map<String, JsonElement?> =
+        entries.filter { isVisible(it) && isEditable(it) }.mapNotNull { e -> value(e.key)?.let { e.key to it } }.toMap()
+
     /** Only what the person changed, ready for `config/providers/save`. */
     fun changedValues(): Map<String, JsonElement?> =
         entries.filter { isChanged(it) }.associate { it.key to value(it.key) }

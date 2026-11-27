@@ -82,3 +82,43 @@ fun providerGroups(configs: List<ProviderConfig>, manifests: List<ProviderManife
         if (rows.isEmpty()) null else ProviderGroup(title, rows)
     }
 }
+
+/** An addable provider kind, as the Add screen lists it. */
+data class AddableProvider(
+    val domain: String,
+    val name: String,
+    val description: String,
+    val groupTitle: String,
+    /** Empty for stable ones; otherwise a short word such as "Beta" or "Experimental". */
+    val stageLabel: String,
+    /** False when adding needs no input: the provider is created as soon as it is started. */
+    val hasSetupSteps: Boolean,
+)
+
+/**
+ * What can be added: every manifest of a kind the app names (music sources, players, metadata, plugins), except built-in
+ * ones, and except ones already set up unless the provider allows several instances. Grouped like the providers list and
+ * sorted by name.
+ */
+fun addableProviders(manifests: List<ProviderManifest>, configs: List<ProviderConfig>): List<Pair<String, List<AddableProvider>>> {
+    val configured = configs.map { it.domain }.toSet()
+    return GROUPS.mapNotNull { (type, title) ->
+        val items = manifests
+            .filter { it.type == type && !it.builtin && (it.multiInstance || it.domain !in configured) }
+            .map {
+                AddableProvider(
+                    domain = it.domain,
+                    name = it.name.ifBlank { it.domain },
+                    description = it.description,
+                    groupTitle = title,
+                    stageLabel = when (it.stage) {
+                        "stable", "" -> ""
+                        else -> it.stage.replaceFirstChar { c -> c.uppercase() }
+                    },
+                    hasSetupSteps = it.hasSetupFlow,
+                )
+            }
+            .sortedBy { it.name.lowercase() }
+        if (items.isEmpty()) null else title to items
+    }
+}

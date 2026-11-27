@@ -195,7 +195,7 @@ fun ProviderEditScreen(
 }
 
 @Composable
-private fun FieldRow(
+internal fun FieldRow(
     entry: ConfigEntry,
     form: ConfigFormState,
     problem: String?,

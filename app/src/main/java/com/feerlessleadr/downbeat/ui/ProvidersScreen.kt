@@ -73,6 +73,7 @@ fun ProvidersScreen(repo: MusicRepository, onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
+    var adding by remember { mutableStateOf(false) }
 
     /** Reads the providers again. Returns false when it could not. */
     suspend fun load(): Boolean {
@@ -124,6 +125,19 @@ fun ProvidersScreen(repo: MusicRepository, onBack: () -> Unit) {
         }
     }
 
+    // Adding a provider takes the whole screen while it is open.
+    if (adding) {
+        AddProviderScreen(
+            repo = repo, controller = controller,
+            onBack = { adding = false },
+            onAdded = {
+                adding = false
+                scope.launch { delay(500); load() }
+            },
+        )
+        return
+    }
+
     // The settings form takes the whole screen while it is open.
     if (selected != null && editing) {
         ProviderEditScreen(
@@ -147,7 +161,10 @@ fun ProvidersScreen(repo: MusicRepository, onBack: () -> Unit) {
                 selected?.name ?: "Music sources and players", style = MaterialTheme.typography.titleLarge,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
             )
-            if (selected == null) TextButton(onClick = { refresh++ }, enabled = !loading) { Text("Refresh") }
+            if (selected == null) {
+                TextButton(onClick = { adding = true }) { Text("Add") }
+                TextButton(onClick = { refresh++ }, enabled = !loading) { Text("Refresh") }
+            }
         }
         if (loading || busy) LinearProgressIndicator(Modifier.fillMaxWidth())
 

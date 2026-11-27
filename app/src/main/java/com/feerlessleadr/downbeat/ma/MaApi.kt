@@ -204,6 +204,31 @@ class MaApi(private val client: MaClient) {
     suspend fun invokeProviderAction(instanceId: String, action: String): JsonElement =
         client.call("config/providers/invoke_action", args { put("instance_id", instanceId); put("action", action) })
 
+    /**
+     * Starts adding a provider. For a provider that needs no input the instance is created at once and a finish step comes
+     * back (the server's own description).
+     */
+    suspend fun startProviderSetup(domain: String): SetupFlowStep =
+        one(SetupFlowStep.serializer(), "config/providers/setup", args { put("provider_domain", domain) })
+            ?: throw MaException(null, "The server did not start the setup.")
+
+    /** Sends the values of a form step and returns the next step. */
+    suspend fun submitFlow(flowId: String, values: Map<String, JsonElement?>): SetupFlowStep =
+        one(
+            SetupFlowStep.serializer(), "config/flows/submit",
+            args {
+                put("flow_id", flowId)
+                put("values", buildJsonObject { values.forEach { (k, v) -> put(k, v ?: JsonNull) } })
+            },
+        ) ?: throw MaException(null, "The server did not answer the setup step.")
+
+    /** Reads the current step again (used to wait on an external or progress step). */
+    suspend fun getFlow(flowId: String): SetupFlowStep =
+        one(SetupFlowStep.serializer(), "config/flows/get", args { put("flow_id", flowId) })
+            ?: throw MaException(null, "The setup is no longer running.")
+
+    suspend fun abortFlow(flowId: String) = run("config/flows/abort", args { put("flow_id", flowId) })
+
     /** Restarts one provider instance. */
     suspend fun reloadProvider(instanceId: String) = run("config/providers/reload", args { put("instance_id", instanceId) })
 

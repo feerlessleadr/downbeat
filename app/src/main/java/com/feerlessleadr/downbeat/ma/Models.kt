@@ -217,6 +217,8 @@ data class ProviderManifest(
     @SerialName("multi_instance") val multiInstance: Boolean = false,
     @SerialName("allow_disable") val allowDisable: Boolean = true,
     @SerialName("has_setup_flow") val hasSetupFlow: Boolean = false,
+    /** stable, beta, alpha, experimental, deprecated. */
+    val stage: String = "stable",
 )
 
 /** One choice of a settings field (`ConfigEntry.options`). [value] is what is saved. */
@@ -260,4 +262,26 @@ data class ConfigEntry(
     val label: String? = null,
     @SerialName("category_label") val categoryLabel: String? = null,
     val value: kotlinx.serialization.json.JsonElement? = null,
+)
+
+/**
+ * One step of the server's setup flow for adding (or reconfiguring) a provider. A form step has [entries] to fill in
+ * (with [errors] per field from the last submit); an external step has a [url] to open (a web sign-in) and is polled; a
+ * progress step shows [progressText] and is polled; finish and abort end the flow.
+ */
+@Serializable
+data class SetupFlowStep(
+    @SerialName("flow_id") val flowId: String,
+    @SerialName("step_id") val stepId: String,
+    /** form, external, progress, finish, abort. */
+    val type: String,
+    val title: String? = null,
+    val description: String? = null,
+    val entries: List<ConfigEntry> = emptyList(),
+    val errors: Map<String, String> = emptyMap(),
+    @SerialName("last_step") val lastStep: Boolean? = null,
+    val url: String? = null,
+    @SerialName("progress_text") val progressText: String? = null,
+    val progress: Double? = null,
+    val reason: String? = null,
 )

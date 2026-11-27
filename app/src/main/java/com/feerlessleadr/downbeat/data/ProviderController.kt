@@ -11,6 +11,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import com.feerlessleadr.downbeat.ma.ConfigEntry
 import com.feerlessleadr.downbeat.ma.MaJson
+import com.feerlessleadr.downbeat.ma.SetupFlowStep
 
 /**
  * Changes to configured providers (administrators only). Every function returns null on success or a short sentence to
@@ -24,6 +25,31 @@ class ProviderController(private val repo: MusicRepository) {
     suspend fun remove(instanceId: String): String? = run { it.removeProvider(instanceId) }
 
     suspend fun sync(instanceId: String): String? = run { it.syncProvider(instanceId) }
+
+    /** Starts adding a provider. */
+    suspend fun startSetup(domain: String): FlowResult = flow { it.startProviderSetup(domain) }
+
+    suspend fun submitStep(flowId: String, values: Map<String, JsonElement?>): FlowResult = flow { it.submitFlow(flowId, values) }
+
+    suspend fun refreshStep(flowId: String): FlowResult = flow { it.getFlow(flowId) }
+
+    /** Stops a setup that is waiting. Errors are ignored: the server drops stale flows itself. */
+    suspend fun abortSetup(flowId: String) {
+        run { it.abortFlow(flowId) }
+    }
+
+    private suspend fun flow(block: suspend (MaApi) -> SetupFlowStep): FlowResult {
+        val api = repo.api ?: return FlowResult.Failed("Not connected to the server.")
+        return try {
+            FlowResult.Step(block(api))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: MaException) {
+            FlowResult.Failed(e.message ?: "The server refused that.")
+        } catch (e: Exception) {
+            FlowResult.Failed("Something went wrong. Try again.")
+        }
+    }
 
     /** The settings form of one provider. */
     suspend fun entries(instanceId: String): EntriesResult {
@@ -99,4 +125,9 @@ internal fun parseActionResult(result: JsonElement): ActionOutcome = when (resul
         openUrl = (result["open_url"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() },
     )
     else -> ActionOutcome()
+}
+
+sealed interface FlowResult {
+    data class Step(val step: SetupFlowStep) : FlowResult
+    data class Failed(val message: String) : FlowResult
 }
