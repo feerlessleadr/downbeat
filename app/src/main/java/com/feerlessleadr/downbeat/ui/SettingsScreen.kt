@@ -61,6 +61,8 @@ fun SettingsScreen(
         if (showProviders) {
             SettingsRow("Music sources and players", "See what is connected to Music Assistant, and change its settings", R.drawable.ic_radio, actions.onProviders)
             HorizontalDivider()
+            SettingsRow("Server", "Version, background tasks, users, access tokens and the log", R.drawable.ic_speaker, actions.onServer)
+            HorizontalDivider()
         }
         Row(
             Modifier.fillMaxWidth().clickable { onMediaControls(!mediaControls) }.padding(horizontal = 24.dp, vertical = 14.dp),

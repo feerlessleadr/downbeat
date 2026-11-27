@@ -4,6 +4,7 @@ package com.feerlessleadr.downbeat.ui
 class AppMenuActions(
     val onAppearance: () -> Unit,
     val onProviders: () -> Unit,
+    val onServer: () -> Unit,
     val onChooseRooms: () -> Unit,
     val onCustomizeBar: () -> Unit,
     val onSignOut: () -> Unit,

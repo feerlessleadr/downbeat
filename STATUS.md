@@ -83,4 +83,7 @@
 - To verify on the phone: that the row appears for the owner's account, that the list matches the web UI (names, kinds, statuses), and what a Problem looks like.
 - Slice 2 (actions) pushed as `ea20c9a` and confirmed on the phone.
 - Slice 3 (settings form) pushed as `a3cebf5` and confirmed on the phone.
-- Slice 4 (add a provider through the setup flow) built, 179 tests pass, not yet tried on a phone, uncommitted: "Add" on the providers list, choose a kind, confirm, then the server's steps (forms, browser sign-in, progress, finish). To verify: the Add list; start a provider that needs steps, look at its first form, then Cancel (nothing is added); add one only if you want it.
+- Slice 4 (add a provider) pushed as `e38b964`; M6 is done pending the owner's own tests of adding a real provider.
+
+## M7 server admin: slice 1 built (186 tests pass, not yet tried on a phone, uncommitted)
+- Research in `docs/server-admin-research.md`. Settings now has a "Server" row (administrators) showing: this server, background tasks, users, access tokens (this phone marked) and the log on demand. Read-only. To verify on the phone: each section against the web UI, and what any section says if it cannot be read.

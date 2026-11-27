@@ -66,7 +66,7 @@ fun AppRoot(repo: MusicRepository, controller: PlaybackController) {
 }
 
 /** Full-screen pages that replace the app content (the Playing screen is a separate layer, see below). */
-private enum class Overlay { None, RoomPicker, CustomizeBar, Appearance, Providers }
+private enum class Overlay { None, RoomPicker, CustomizeBar, Appearance, Providers, Server }
 
 @Composable
 private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) {
@@ -95,6 +95,7 @@ private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) 
     val menu = AppMenuActions(
         onAppearance = { overlay = Overlay.Appearance },
         onProviders = { overlay = Overlay.Providers },
+        onServer = { overlay = Overlay.Server },
         onChooseRooms = { overlay = Overlay.RoomPicker },
         onCustomizeBar = { overlay = Overlay.CustomizeBar },
         onSignOut = { scope.launch { repo.signOutAndRevoke() } },
@@ -202,6 +203,7 @@ private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) 
                     Overlay.RoomPicker -> RoomPickerScreen(repo, firstRun = firstRun, onDone = { overlay = Overlay.None })
                     Overlay.Appearance -> AppearanceScreen(repo, onBack = { overlay = Overlay.None })
                     Overlay.Providers -> ProvidersScreen(repo, onBack = { overlay = Overlay.None })
+                    Overlay.Server -> ServerScreen(repo, onBack = { overlay = Overlay.None })
                     Overlay.CustomizeBar -> CustomizeBarScreen(
                         current = navItems,
                         onSave = { ids -> repo.setNavItems(ids); overlay = Overlay.None },

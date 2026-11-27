@@ -53,6 +53,10 @@ data class AuthToken(
     @SerialName("token_id") val tokenId: String,
     val name: String = "",
     @SerialName("is_long_lived") val isLongLived: Boolean = false,
+    // Dates may arrive as numbers or text (unverified); they are shown with `formatWhen`.
+    @SerialName("created_at") val createdAt: kotlinx.serialization.json.JsonElement? = null,
+    @SerialName("expires_at") val expiresAt: kotlinx.serialization.json.JsonElement? = null,
+    @SerialName("last_used_at") val lastUsedAt: kotlinx.serialization.json.JsonElement? = null,
 )
 
 @Serializable
@@ -284,4 +288,43 @@ data class SetupFlowStep(
     @SerialName("progress_text") val progressText: String? = null,
     val progress: Double? = null,
     val reason: String? = null,
+)
+
+/** What `info` says about the server. The server's addresses are deliberately not read: they are private. */
+@Serializable
+data class ServerAbout(
+    val name: String? = null,
+    @SerialName("server_version") val serverVersion: String = "",
+    @SerialName("schema_version") val schemaVersion: Int = 0,
+    val status: String? = null,
+    @SerialName("homeassistant_addon") val homeAssistantAddon: Boolean = false,
+    @SerialName("has_remote_access") val hasRemoteAccess: Boolean = false,
+    @SerialName("onboard_done") val onboardDone: Boolean = true,
+)
+
+/** An account on the server (`auth/users`). */
+@Serializable
+data class AdminUser(
+    @SerialName("user_id") val userId: String,
+    val username: String = "",
+    val role: String = "",
+    val enabled: Boolean = true,
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("created_at") val createdAt: kotlinx.serialization.json.JsonElement? = null,
+)
+
+/** A background task of the server: a library sync, a scheduled job (`tasks/list`). */
+@Serializable
+data class BackgroundTask(
+    val id: String = "",
+    val name: String = "",
+    val status: String = "",
+    val progress: Double? = null,
+    @SerialName("progress_text") val progressText: String? = null,
+    @SerialName("last_run") val lastRun: kotlinx.serialization.json.JsonElement? = null,
+    @SerialName("next_run") val nextRun: kotlinx.serialization.json.JsonElement? = null,
+    @SerialName("last_error") val lastError: kotlinx.serialization.json.JsonElement? = null,
+    @SerialName("failure_count") val failureCount: Int = 0,
+    @SerialName("allow_retry") val allowRetry: Boolean = false,
+    @SerialName("allow_cancel") val allowCancel: Boolean = false,
 )

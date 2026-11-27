@@ -47,7 +47,7 @@ Still to verify by the owner: tick/untick grouping, per-room volume, switching w
 - Hidden entirely for users who are not admins (the signed-in user's role decides).
 - Research first (before any code): the exact provider and config commands and the config-entry shapes are not verified yet. The owner runs one more read-only sample script, as before. Providers that need a web sign-in (for example OAuth) get a hand-off to the browser and may be limited at first.
 
-## M7. Server admin (admin accounts only)
+## M7. Server admin (admin accounts only): research done, slice 1 (read-only Server screen) built, awaiting the owner's phone test
 - Settings, then Server: server version and status, library sync, users (list, add, remove, change role), long-lived tokens (list and revoke), player settings (rename, hide, enable and disable), and a view of recent server log lines.
 - Anything destructive asks first and says what it will do.
 - Hidden for non-admin users. Research and a sample run precede the code, as in M6. Exact scope is trimmed to what the real server's commands allow.

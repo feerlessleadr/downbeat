@@ -93,6 +93,9 @@ class MusicRepository(
         return if (url.host == host) "Bearer ${s.token}" else null
     }
 
+    /** The name of the access token this phone made when signing in, or null for an older sign-in. */
+    val thisTokenName: String? get() = currentSession?.tokenName
+
     /** The address the person typed, for building artwork URLs. */
     val serverUrl: String? get() = currentSession?.serverUrl
 

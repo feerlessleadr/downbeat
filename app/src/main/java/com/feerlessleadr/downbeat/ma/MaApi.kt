@@ -229,6 +229,18 @@ class MaApi(private val client: MaClient) {
 
     suspend fun abortFlow(flowId: String) = run("config/flows/abort", args { put("flow_id", flowId) })
 
+    // ---- Server admin (docs/server-admin-research.md). All need an administrator account. ----
+
+    suspend fun aboutServer(): ServerAbout =
+        one(ServerAbout.serializer(), "info", args { }) ?: throw MaException(null, "The server gave no information.")
+
+    suspend fun adminUsers(): List<AdminUser> = list(AdminUser.serializer(), "auth/users")
+
+    suspend fun backgroundTasks(): List<BackgroundTask> = list(BackgroundTask.serializer(), "tasks/list")
+
+    /** The application log as text (can be large). */
+    suspend fun serverLog(): String = (client.call("logging/get") as? JsonPrimitive)?.content.orEmpty()
+
     /** Restarts one provider instance. */
     suspend fun reloadProvider(instanceId: String) = run("config/providers/reload", args { put("instance_id", instanceId) })
 
