@@ -227,6 +227,15 @@ class MaClientTest {
         assertTrue(client.state.value is MaState.Disconnected)
     }
 
+    @Test fun serverInitiatedCloseIsNoticedAsDisconnected() = runBlocking {
+        fakeServer()
+        val client = connect()
+        client.awaitTerminal()
+        serverSockets.forEach { it.close(1001, "going away") }
+        val state = withTimeout(5_000) { client.state.first { it is MaState.Disconnected } }
+        assertTrue(state is MaState.Disconnected)
+    }
+
     @Test fun playerDecodingToleratesUnknownAndNullFields() {
         val json = """{"player_id":"p9","name":"Deck","type":"player","provider":"wiim","available":false,
             "volume_level":null,"powered":null,"synced_to":null,"current_media":null,

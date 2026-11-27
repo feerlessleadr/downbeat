@@ -1,32 +1,34 @@
 # STATUS (2026-11-26)
 
-**Phase:** Connection and command layers built. Design approved 2026-11-26. The app itself is still a placeholder screen. Pushed to feerlessleadr/downbeat: scaffold (07f5136) and the websocket client (61ae722). The typed API layer is uncommitted.
+**Phase:** Sign-in and live rooms are verified on a real phone (owner, 2026-11-26). The rooms list is still a temporary screen; next is the real Playing screen. Pushed up to the sign-in and connection commit.
 
 ## Done this session
-- Registered project; research; two authenticated sample runs read by Claude: `docs/music-assistant-api.md`, `docs/music-assistant-api-verified.md` (wins on conflicts).
-- Design approved: `docs/design.md` (rooms list, Playing / Library / Search tabs, first-run room picker).
-- Scaffold (Gradle 9.8.1, AGP 9.4.1, Kotlin 2.4.21, Compose BOM 2026.09.00, minSdk 26, package `com.feerlessleadr.downbeat`). Debug APK builds; never installed or launched.
-- `ma/MaClient.kt` (websocket, token auth, string message ids, partial batches, events, AuthFailed vs Disconnected) and `ma/Models.kt`. Verified against real data: error shape (numeric `error_code` plus `details`), token-create result (plain string), `player_updated` events (full Player in `data`), 18 real players and queues decode.
-- `ma/MaApi.kt` (players, queues, queue items, transport, shuffle/repeat, queue edit, play_media, volume, power, set_members, transfer, search, library lists, album/playlist/artist lookups), `ma/ImageUrls.kt` (artwork URL from `proxy_id`, host rewrite), `MediaItem`/`SearchResults` models. Command and argument names checked against the server's own `commands.json`.
-- 29 unit tests pass (4 more real-sample tests are skipped because the samples folder was deleted, as requested).
+- Registered project; research; two authenticated sample runs: `docs/music-assistant-api.md`, `docs/music-assistant-api-verified.md` (wins on conflicts).
+- Design approved: `docs/design.md`.
+- Scaffold (Gradle 9.8.1, AGP 9.4.1, Kotlin 2.4.21, Compose BOM 2026.09.00, minSdk 26, package `com.feerlessleadr.downbeat`).
+- `ma/`: `MaClient` (websocket), `Models`, `MaApi` (typed commands), `ImageUrls`, `MaAuth` (HTTPS `POST /auth/login`, shape taken from the server's openapi.json, not yet tried live).
+- `data/`: `SessionStore` (`KeystoreSessionStore`: token encrypted with an Android Keystore AES-GCM key), `MusicRepository` (sign-in, long-lived token, connection loop with backoff, player events, queue re-read on playback change, sign-out on refused token), `Rooms` (which players count as rooms, honest status text).
+- `ui/`: `SignInScreen`, `AppRoot` with a temporary rooms list; `DownbeatApp` wires it up.
+- Bug found by a test and fixed: the client never noticed a server-initiated close (OkHttp needs `onClosing` answered), so reconnect would never have happened.
+- 45 unit tests pass (4 real-sample tests skipped without the samples folder).
 
 ## Next action
-1. Commit the typed API layer when the owner says so.
-2. App wiring: a repository that owns one `MaClient`, exposes players and queues as state, and re-reads a queue after `player_updated` (no queue events seen yet). Reconnect policy lives here (new `MaClient` per attempt).
-3. Sign-in screen: server address, username and password, `auth/login` (result shape unverified; capture it by logging in once for real), then `auth/token/create`; store only the token, encrypted.
-4. Rooms model (first-run room picker, static groups, feature gating) and the Playing screen.
+1. Owner: install the debug APK on a phone and try signing in (steps in the last message). Report what happens, especially: does sign-in work, do the rooms and their states look right, does it survive turning wifi off and on.
+2. Commit and push when the owner says so.
+3. Rooms model and the Playing screen (design: tick-to-play-together sheet, room chip, controls gated by features), then Library and Search.
 
 ## Open questions
 - TVs hidden by default with opt-in at first run (proposed in the design; confirm).
-- Palette and real icon (placeholder in use).
+- Palette and real icon (placeholders in use).
 - CI workflows (pull request build, signed release) not copied from dockge-for-android yet.
 
 ## Not yet verified
-- `auth/login` result shape; queue events; token expiry in practice.
-- Every playback-changing command (`play_media`, `set_members`, volume, transport): the sample runs were read-only, so none has been sent to the real server.
-- `MediaItem` and search decoding against real data: the one album sample read earlier matched the model, search items were not seen.
-- The debug APK has never been installed or launched.
+- Password sign-in (`POST /auth/login`), `auth/token/create` over a real login, and the Keystore token store on a device.
+- Queue events; token expiry in practice.
+- Every playback-changing command (`play_media`, `set_members`, volume, transport): none has been sent to the real server.
+- `MediaItem` and search decoding against real data.
+- (Resolved 2026-11-26) The owner installed the debug build on a phone and confirmed: sign-in works, rooms show with sensible states, it recovers after wifi off and on, and a volume change in the web UI shows in the app. Not separately checked: the Keystore store across an app restart, and the first-launch sign-in on a second device.
 
 ## Owner manual steps
-- Samples folder is already deleted. To re-run real-data tests later, run the sample script again and set `$env:DOWNBEAT_SAMPLES` to its folder before `gradlew test`.
-- In the Music Assistant web UI, delete the token `downbeat-probe-2` if you created it, and any other token you made only for probing.
+- Install and test the debug APK (see Next action 1).
+- In the Music Assistant web UI, delete the token `downbeat-probe-2` if you created it. After testing, you may also want to delete the token Downbeat creates for itself (named `Downbeat`) if you stop using it; Downbeat's sign-out only forgets the token on the phone, it does not revoke it on the server (not implemented yet).

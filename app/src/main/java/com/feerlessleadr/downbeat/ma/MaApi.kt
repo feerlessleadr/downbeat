@@ -19,6 +19,14 @@ import kotlinx.serialization.json.put
  */
 class MaApi(private val client: MaClient) {
 
+    // ---- Account -----------------------------------------------------------------------------------------
+
+    /** Makes a long-lived token (the server says: valid for 1 year, not renewed by use). The result is the token. */
+    suspend fun createLongLivedToken(name: String): String {
+        val result = client.call("auth/token/create", args { put("name", name) })
+        return (result as? JsonPrimitive)?.content ?: throw MaException(null, "No token in the server's answer")
+    }
+
     // ---- Players and queues ------------------------------------------------------------------------------
 
     suspend fun players(includeUnavailable: Boolean = true): List<Player> =

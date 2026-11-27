@@ -42,3 +42,16 @@
 - **Decision**: Keep error codes as strings in `MaException` (numeric codes are converted). Treat a null result as a normal answer ("not found"), not an exception. Added `RealSamplesTest`, which decodes the owner's local sample files when `DOWNBEAT_SAMPLES` is set and skips otherwise, so real data never enters the repo. Until queue events are seen, the app re-reads the affected queue after player events.
 - **Rationale**: Tests against real shapes catch model drift without committing device data.
 - **Impact**: `MaClientTest` (two new tests), `RealSamplesTest`, docs.
+
+### 2026-11-26, Sign-in, token storage and connection ownership
+- **Context**: Needed a way to sign in without ever storing the password, and one place that owns the live connection.
+- **Options considered**: Login over the websocket versus a plain HTTPS POST; keep the 30-day login token versus swap it for a 1-year long-lived token; androidx security-crypto versus the Android Keystore directly; a ViewModel per screen versus one app-wide repository.
+- **Decision**: Login is HTTPS `POST /auth/login` (the server documents it in openapi.json). After login the app opens one websocket, calls `auth/token/create` for a long-lived token, and stores only that (falling back to the login token if creation fails). The token is encrypted with an AES-GCM key in the Android Keystore (no deprecated security-crypto library). http addresses are refused (`requireHttps`, and cleartext is also off in the manifest). One `MusicRepository` owns one `MaClient` at a time, retries with 1 to 30 second backoff, and signs the user out when the server refuses the token. Sign-out forgets the token locally but does not revoke it on the server yet.
+- **Rationale**: The password exists only in one request body. A long-lived token survives a month of not opening the app. One owner of the connection keeps screens simple and reconnect logic in one tested place.
+- **Impact**: `data/`, `ma/MaAuth.kt`, `ui/`, manifest (`DownbeatApp`). Revoking the token on sign-out is a to-do.
+
+### 2026-11-26, Client must answer a server-initiated close
+- **Context**: A repository test showed no reconnect after the server dropped the socket.
+- **Decision**: `MaClient` answers `onClosing` and reports Disconnected immediately.
+- **Rationale**: OkHttp only calls `onClosed` after the client answers, so a server restart would have left the app showing stale rooms forever.
+- **Impact**: `ma/MaClient.kt` plus a test.

@@ -197,6 +197,13 @@ class MaClient(
     private inner class Listener(private val token: String) : WebSocketListener() {
         override fun onMessage(webSocket: WebSocket, text: String) = handle(text, token)
 
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            // The server started the close. OkHttp only finishes the handshake (and calls onClosed) when we answer,
+            // so without this a server-side drop or restart would never be noticed.
+            webSocket.close(1000, null)
+            onClosed(webSocket, code, reason)
+        }
+
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             failPending(MaException(null, "Connection closed"))
             if (_state.value !is MaState.AuthFailed) _state.value = MaState.Disconnected(reason.ifBlank { "closed" })
