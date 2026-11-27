@@ -66,7 +66,7 @@ fun AppRoot(repo: MusicRepository, controller: PlaybackController) {
 }
 
 /** Full-screen pages that replace the app content (the Playing screen is a separate layer, see below). */
-private enum class Overlay { None, RoomPicker, CustomizeBar, Appearance }
+private enum class Overlay { None, RoomPicker, CustomizeBar, Appearance, Providers }
 
 @Composable
 private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) {
@@ -74,6 +74,7 @@ private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) 
     val configured by repo.roomsConfigured.collectAsStateWithLifecycle()
     val navItems by repo.navItems.collectAsStateWithLifecycle()
     val mediaControls by repo.mediaControls.collectAsStateWithLifecycle()
+    val providerAdmin by repo.providerAdmin.collectAsStateWithLifecycle()
     val selectedRoom by repo.selectedRoomId.collectAsStateWithLifecycle()
     val hiddenRooms by repo.hiddenRooms.collectAsStateWithLifecycle()
     var overlay by rememberSaveable { mutableStateOf(Overlay.None) }
@@ -93,6 +94,7 @@ private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) 
     val onError: (String) -> Unit = { message -> if (message.isNotBlank()) scope.launch { snackbar.showSnackbar(message) } }
     val menu = AppMenuActions(
         onAppearance = { overlay = Overlay.Appearance },
+        onProviders = { overlay = Overlay.Providers },
         onChooseRooms = { overlay = Overlay.RoomPicker },
         onCustomizeBar = { overlay = Overlay.CustomizeBar },
         onSignOut = { scope.launch { repo.signOutAndRevoke() } },
@@ -199,6 +201,7 @@ private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) 
                 when (shown) {
                     Overlay.RoomPicker -> RoomPickerScreen(repo, firstRun = firstRun, onDone = { overlay = Overlay.None })
                     Overlay.Appearance -> AppearanceScreen(repo, onBack = { overlay = Overlay.None })
+                    Overlay.Providers -> ProvidersScreen(repo, onBack = { overlay = Overlay.None })
                     Overlay.CustomizeBar -> CustomizeBarScreen(
                         current = navItems,
                         onSave = { ids -> repo.setNavItems(ids); overlay = Overlay.None },
@@ -206,7 +209,7 @@ private fun MainScaffold(repo: MusicRepository, controller: PlaybackController) 
                     )
                     Overlay.None -> when {
                         tab.id == "search" -> SearchScreen(repo, source, controller, search, onError)
-                        tab.id == "settings" -> SettingsScreen(menu, repo.serverUrl, mediaControls, repo::setMediaControls)
+                        tab.id == "settings" -> SettingsScreen(menu, repo.serverUrl, mediaControls, repo::setMediaControls, showProviders = providerAdmin == true)
                         tab.id == "rooms" -> RoomsPage(repo, controller, onError)
                         tab.id == "playing" -> PlayingScreen(repo, controller, onError = onError)
                         else -> LibraryScreen(repo, source, controller, browseFor(tab.id), fixedType = tab.libraryType, onMessage = onError)

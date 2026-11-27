@@ -182,6 +182,13 @@ class MaApi(private val client: MaClient) {
             args { put("item_id", itemId); put("provider_instance_id_or_domain", providerInstanceOrDomain) },
         )
 
+    /** Every configured provider instance (needs an administrator account). The form values are left out. */
+    suspend fun providerConfigs(): List<ProviderConfig> =
+        list(ProviderConfig.serializer(), "config/providers", args { put("include_values", false) })
+
+    /** Every kind of provider the server could add. */
+    suspend fun providerManifests(): List<ProviderManifest> = list(ProviderManifest.serializer(), "providers/manifests")
+
     suspend fun albumTracks(itemId: String, providerInstanceOrDomain: String): List<MediaItem> =
         list(
             MediaItem.serializer(), "music/albums/album_tracks",

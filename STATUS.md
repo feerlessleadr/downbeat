@@ -48,7 +48,7 @@
 - Rebuilt (135 tests pass, not yet tried on a phone, uncommitted): stronger overlay on the Playing screen only; a divider and space under the Library tabs. The colour rules are written up in `C:\dev\_docs\DESIGN-STANDARDS.md` for future apps.
 - Round 14 (owner): everything looks good; the fade back to the base colours after the music stops was too sharp. Rebuilt: eased fades, 1.4 s between covers and 3.4 s back to the base (not yet tried on a phone, uncommitted).
 - Round 15 (owner): all good; committed and pushed as `c53f784` (everything through the colour themes).
-## M5 lock screen and notification controls: built, not yet tried on a phone, uncommitted
+## M5 lock screen and notification controls: pushed as `9a67e39`
 - Android media session and notification in a foreground service while the chosen rooms play or pause: title, artist, cover, position, previous, play or pause, next, stop; lock screen seek bar and headset or Bluetooth buttons work; stops 30 s after playback ends; a Settings switch turns it off; the notification permission is asked once (Android 13 and later).
 - Owner test (OnePlus): shade, lock screen, cover, seek bar, next, previous, stop and open-on-tap work; play and pause did not seem to respond and next seemed to start the song twice (probably the phone sending each tap twice). Fixed in code, not yet retested: explicit play and pause, and a 900 ms guard against repeated commands (146 tests pass).
 - Owner (round 2): the notification buttons are fine; the "starts twice" on next seems to be the server taking a moment to load. Added one app-side fix: a queue that still describes the old song no longer drives the play position after a skip (147 tests pass, not yet retested).
@@ -77,3 +77,7 @@
 - Library artwork: the owner cannot run scripts, so the app has a temporary menu item, three-dot menu then "Check artwork", that shows how the server describes images and the status of one image request with and without the token (no token or address shown). Send a screenshot of it. Remove this item and `MusicRepository.artworkReport` once artwork works. (`tools/Sample-Images.ps1` does the same from a PC.)
 - Install the new debug build over the old one and test.
 - In the Music Assistant web UI, delete the old token named exactly `Downbeat` (created before token names became unique) and the token `downbeat-probe-2` if you made it. Tokens named `Downbeat xxxxxx` are removed by sign-out.
+
+## M6 provider setup: slice 1 built (154 tests pass, not yet tried on a phone, uncommitted)
+- Research written up in `docs/provider-setup-research.md` (from the server's public API description). Settings now shows "Music sources and players" for administrator accounts: a read-only list of every provider with its status and any error. Slices 2 to 4 (actions, edit forms, adding through the setup flow) come after the owner checks slice 1.
+- To verify on the phone: that the row appears for the owner's account, that the list matches the web UI (names, kinds, statuses), and what a Problem looks like.

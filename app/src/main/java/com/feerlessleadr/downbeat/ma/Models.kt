@@ -180,3 +180,41 @@ data class SearchResults(
     val playlists: List<MediaItem> = emptyList(),
     val radio: List<MediaItem> = emptyList(),
 )
+
+/** Why a provider is not working (`config/providers`, `last_error`). */
+@Serializable
+data class ProviderError(
+    @SerialName("error_code") val errorCode: Int = 0,
+    val message: String = "",
+)
+
+/**
+ * One configured instance of a provider (a music source, a player provider, a metadata provider, a plugin) as listed by
+ * `config/providers`. The form values are not read here (see docs/provider-setup-research.md).
+ */
+@Serializable
+data class ProviderConfig(
+    @SerialName("instance_id") val instanceId: String,
+    val domain: String = "",
+    /** music, player, metadata, plugin, core, audio_analysis. */
+    val type: String = "",
+    val enabled: Boolean = true,
+    val name: String? = null,
+    @SerialName("default_name") val defaultName: String? = null,
+    /** loaded, loading, disabled, auth_required, incompatible, error. */
+    val status: String? = null,
+    @SerialName("last_error") val lastError: ProviderError? = null,
+)
+
+/** A kind of provider that can be added (`providers/manifests`). */
+@Serializable
+data class ProviderManifest(
+    val domain: String,
+    val type: String = "",
+    val name: String = "",
+    val description: String = "",
+    val builtin: Boolean = false,
+    @SerialName("multi_instance") val multiInstance: Boolean = false,
+    @SerialName("allow_disable") val allowDisable: Boolean = true,
+    @SerialName("has_setup_flow") val hasSetupFlow: Boolean = false,
+)

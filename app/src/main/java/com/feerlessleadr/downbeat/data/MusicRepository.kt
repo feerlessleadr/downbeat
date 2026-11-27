@@ -216,6 +216,7 @@ class MusicRepository(
         currentApi = null
         currentSession = null
         store.clear()
+        _providerAdmin.value = null
         _state.value = RepoState(phase = Phase.SignedOut, message = message)
     }
 
@@ -326,7 +327,24 @@ class MusicRepository(
                 message = null,
             )
         }
+        // Can this account manage providers? Asked by trying the read, not by guessing role names: a refusal from the
+        // server means no. Any other failure (a dropped connection, an unexpected answer) keeps the last known answer.
+        _providerAdmin.value = try {
+            api.providerConfigs()
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: com.feerlessleadr.downbeat.ma.MaException) {
+            false
+        } catch (e: Exception) {
+            _providerAdmin.value
+        }
     }
+
+    private val _providerAdmin = MutableStateFlow<Boolean?>(null)
+
+    /** True when this account may manage music sources and players, false when it may not, null until known. */
+    val providerAdmin: StateFlow<Boolean?> = _providerAdmin.asStateFlow()
 
     private suspend fun handleEvent(api: MaApi, event: MaEvent) {
         val data = event.data

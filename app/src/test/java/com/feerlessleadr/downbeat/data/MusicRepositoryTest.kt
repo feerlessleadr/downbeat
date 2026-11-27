@@ -100,6 +100,29 @@ class MusicRepositoryTest {
         assertNull(store.session)
     }
 
+    @Test fun anAccountThatMayReadProvidersIsTreatedAsAnAdministrator() = runBlocking {
+        fake.tokens.add("good")
+        fake.results["config/providers"] = "[]"
+        val r = repo(MemoryStore(Session(fake.url(), "good")))
+        assertNull(r.providerAdmin.value)
+        r.start()
+        r.await { it.phase == Phase.Online }
+        withTimeout(10_000) { while (r.providerAdmin.value == null) delay(20) }
+        assertEquals(true, r.providerAdmin.value)
+    }
+
+    @Test fun aRefusalFromTheServerMeansNotAnAdministrator() = runBlocking {
+        fake.tokens.add("good")
+        fake.errors["config/providers"] = "Permission denied"
+        val r = repo(MemoryStore(Session(fake.url(), "good")))
+        r.start()
+        r.await { it.phase == Phase.Online }
+        withTimeout(10_000) { while (r.providerAdmin.value == null) delay(20) }
+        assertEquals(false, r.providerAdmin.value)
+        r.signOut()
+        assertNull(r.providerAdmin.value)
+    }
+
     @Test fun choosingRoomsIsRememberedAndHidesThem() = runBlocking {
         val r = repo(MemoryStore())
         assertTrue(!r.roomsConfigured.value)

@@ -41,7 +41,7 @@ Still to verify by the owner: tick/untick grouping, per-room volume, switching w
 - Headset and Bluetooth media buttons control the selected room.
 - To verify: behaviour when the phone sleeps (the connection check from M1 applies), and Android battery restrictions on the owner's phone.
 
-## M6. Provider setup (admin accounts only)
+## M6. Provider setup (admin accounts only): research done, slice 1 (read-only list) built, awaiting the owner's phone test
 - Settings, then Providers: list configured music, player and metadata providers with status (loaded, error), reload, enable and disable, remove, and a library sync button per music provider.
 - Add a provider: list available provider types, then a form built from the server's own config entries (text, password, toggles, choices, and sign-in links or codes where a provider needs them). Save, then show the result or the server's error.
 - Hidden entirely for users who are not admins (the signed-in user's role decides).

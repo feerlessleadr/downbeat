@@ -35,6 +35,8 @@ fun SettingsScreen(
     serverUrl: String?,
     mediaControls: Boolean,
     onMediaControls: (Boolean) -> Unit,
+    /** Shown only for administrator accounts (see MusicRepository.providerAdmin). */
+    showProviders: Boolean,
 ) {
     var confirmSignOut by remember { mutableStateOf(false) }
     if (confirmSignOut) {
@@ -56,6 +58,10 @@ fun SettingsScreen(
         HorizontalDivider()
         SettingsRow("Rooms", "Choose which rooms are shown", R.drawable.ic_speaker, actions.onChooseRooms)
         HorizontalDivider()
+        if (showProviders) {
+            SettingsRow("Music sources and players", "See what is connected to Music Assistant and its status", R.drawable.ic_radio, actions.onProviders)
+            HorizontalDivider()
+        }
         Row(
             Modifier.fillMaxWidth().clickable { onMediaControls(!mediaControls) }.padding(horizontal = 24.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
